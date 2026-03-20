@@ -82,6 +82,14 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
   const [qrExpired, setQrExpired] = useState(false)
   const [qrExpiredDialogOpen, setQrExpiredDialogOpen] = useState(false)
 
+  // Clean up the ?data= param from the URL once the point is earned so
+  // a page refresh doesn't re-trigger the QR validation flow.
+  useEffect(() => {
+    if (pointEarned) {
+      window.history.replaceState(null, '', '/earn-points')
+    }
+  }, [pointEarned])
+
   // ---------------------------------------------------------------------------
   // QR validation on mount
   // ---------------------------------------------------------------------------

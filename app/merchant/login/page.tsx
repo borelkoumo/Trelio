@@ -24,11 +24,14 @@ export default function MerchantLogin() {
   const supabase = createClient()
   const { t } = useLanguage()
 
+  // Listen for auth state changes — this fires only after the session cookies
+  // are fully committed, making the redirect reliable in all cases.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) router.push('/merchant')
     })
-  }, [supabase.auth, router])
+    return () => subscription.unsubscribe()
+  }, [supabase, router])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,13 +39,13 @@ export default function MerchantLogin() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      console.log('Login successful')
-      router.push('/merchant')
+      // Navigation is handled by the onAuthStateChange listener above
     } catch (error: any) {
       toast.error('Error', { description: error.message || 'Failed to sign in' })
-    } finally {
       setLoading(false)
     }
+    // Note: setLoading(false) is intentionally omitted on success —
+    // the spinner stays while the redirect is in flight.
   }
 
   const fillDemoCredentials = () => {

@@ -30,7 +30,24 @@ export async function middleware(request: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser()
+
+  // Stale / invalid refresh token — clear the dead cookies and redirect to
+  // login if the user was trying to access a protected route.
+  if (authError?.code === 'refresh_token_not_found' || authError?.status === 400) {
+    const stale = request.cookies.getAll().filter(c => c.name.startsWith('sb-'))
+    const isProtected =
+      request.nextUrl.pathname.startsWith('/merchant') &&
+      !request.nextUrl.pathname.startsWith('/merchant/login')
+
+    const response = isProtected
+      ? NextResponse.redirect(new URL('/merchant/login', request.url))
+      : NextResponse.next({ request })
+
+    stale.forEach(c => response.cookies.delete(c.name))
+    return response
+  }
 
   // Ensure anonymous tracking cookie exists
   let fideloAnonId = request.cookies.get('fidelo_anon_id')?.value
