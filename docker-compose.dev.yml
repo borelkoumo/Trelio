@@ -1,0 +1,21 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: trelio-dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    volumes:
+      # Bind-mount the entire project so every file save is reflected instantly.
+      - .:/app
+      # Anonymous volumes prevent the host's node_modules / .next from
+      # shadowing the versions installed inside the container.
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped

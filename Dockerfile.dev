@@ -1,0 +1,29 @@
+# =============================================================================
+# Development image — hot reload via `npm run dev`
+# Source code is mounted as a bind volume at runtime (not baked in).
+# =============================================================================
+FROM node:22.22.1-alpine
+
+WORKDIR /app
+
+RUN apk upgrade --no-cache && \
+    apk add --no-cache libc6-compat
+
+# Install dependencies into the image so node_modules lives inside the
+# container and isn't overwritten by the host bind-mount.
+COPY package.json package-lock.json ./
+RUN npm ci --frozen-lockfile
+
+# Source is injected at runtime via the bind-mount in docker-compose.dev.yml.
+# We only pre-copy here so the image is self-contained if needed.
+COPY . .
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+# WATCHPACK_POLLING forces webpack to poll for file changes.
+# Required on WSL2 / Docker Desktop where inotify events don't propagate.
+ENV WATCHPACK_POLLING=true
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
