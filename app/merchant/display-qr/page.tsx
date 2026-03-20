@@ -173,8 +173,9 @@ export default function DisplayQRPage() {
 
   return (
     <div className="min-h-screen bg-zinc-900 flex flex-col font-sans text-white">
-      {/* Header */}
-      <div className="p-4 flex items-center justify-between border-b border-zinc-800">
+
+      {/* Header — back button only */}
+      <div className="p-4 flex items-center border-b border-zinc-800">
         <Button
           variant="ghost"
           onClick={() => router.push('/merchant')}
@@ -183,29 +184,32 @@ export default function DisplayQRPage() {
           <ArrowLeft className="mr-2 h-5 w-5" />
           {t('merchant.backToDashboard')}
         </Button>
-        <div className="text-zinc-400 text-sm font-medium">
-          {merchant?.name}
-        </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-[3rem] shadow-2xl flex flex-col items-center max-w-md w-full">
+      {/* Scrollable body */}
+      <div className="flex-1 flex flex-col items-center px-6 pt-6 pb-10 max-w-md mx-auto w-full">
+
+        {/* Merchant name */}
+        <p className="text-zinc-400 text-sm font-medium mb-4 text-center">{merchant?.name}</p>
+
+        {/* QR card */}
+        <div className="bg-white p-8 rounded-[3rem] shadow-2xl flex flex-col items-center w-full">
           {qrData ? (
             <QRCodeSVG
               value={earnUrl}
               size={220}
               level="H"
-              includeMargin={false}
+              marginSize={0}
               className="w-full h-auto max-w-[220px]"
             />
           ) : (
-            <div className="w-[300px] h-[300px] flex items-center justify-center text-zinc-500 text-center">
+            <div className="w-[220px] h-[220px] flex items-center justify-center text-zinc-500 text-center text-sm">
               {t('merchant.failedLoadQr')}
             </div>
           )}
         </div>
-        <p className="mt-8 text-zinc-400 text-center max-w-sm">
+
+        <p className="mt-5 text-zinc-400 text-sm text-center leading-relaxed">
           {t('merchant.scanQrDesc')}
         </p>
 
@@ -214,31 +218,29 @@ export default function DisplayQRPage() {
             href={earnUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-300 underline underline-offset-4 transition-colors"
+            className="mt-3 flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-300 underline underline-offset-4 transition-colors"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             {t('sim.openView')}
           </a>
         )}
-      </div>
 
-      {/* Validation Requests Area (Manual Mode) */}
-      {merchant?.validation_mode === 'manual' && (
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950 min-h-[120px]">
-          <div className="max-w-md mx-auto">
+        {/* Validation Requests (Manual Mode) */}
+        {merchant?.validation_mode === 'manual' && (
+          <div className="w-full mt-8 border-t border-zinc-800 pt-6">
             <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center uppercase tracking-wider">
               <BellRing className="h-4 w-4 mr-2" />
               {t('merchant.validationRequests')} ({requests.length})
             </h3>
-            
+
             {requests.length === 0 ? (
-              <div className="text-center text-zinc-600 py-4">
+              <p className="text-center text-zinc-600 text-sm py-2">
                 {t('merchant.waitingCustomers')}
-              </div>
+              </p>
             ) : (
-              <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {requests.map((req) => (
-                  <div key={req.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between animate-in slide-in-from-bottom-2">
+                  <div key={req.id} className="bg-zinc-800 border border-zinc-700 rounded-2xl p-4 flex items-center justify-between animate-in slide-in-from-bottom-2">
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="font-medium text-white">{t('merchant.newRequest')}</span>
                       {req.device_type && (
@@ -248,7 +250,7 @@ export default function DisplayQRPage() {
                         {req.user_email ?? `${req.user_id.substring(0, 8)}…`}
                       </span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 shrink-0">
                       <Button
                         onClick={() => handleValidation(req.id, 'reject')}
                         variant="outline"
@@ -259,9 +261,9 @@ export default function DisplayQRPage() {
                       </Button>
                       <Button
                         onClick={() => handleValidation(req.id, 'approve')}
-                        className="h-10 px-6 rounded-full bg-emerald-600 text-white hover:bg-emerald-500"
+                        className="h-10 px-5 rounded-full bg-emerald-600 text-white hover:bg-emerald-500"
                       >
-                        <Check className="mr-2 h-5 w-5" />
+                        <Check className="mr-1.5 h-4 w-4" />
                         {t('merchant.approve')}
                       </Button>
                     </div>
@@ -270,8 +272,8 @@ export default function DisplayQRPage() {
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
