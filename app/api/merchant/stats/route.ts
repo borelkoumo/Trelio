@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     const { data: merchant, error: merchantError } = await supabase
       .from('merchants')
-      .select('id, name, secret_key, reward_threshold, reward_description, validation_mode')
+      .select('id, code, name, secret_key, reward_threshold, reward_description, validation_mode')
       .eq('user_id', user.id)
       .single()
 

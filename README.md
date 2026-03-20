@@ -32,9 +32,7 @@ cp .env.example .env
 | Variable | Description |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous (public) key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (server-side only) |
-| `APP_URL` | Public URL of the deployment (e.g. `https://trelio.io`) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | Supabase publishable key — browser-safe (replaces legacy anon key) |
 | `NEXT_PUBLIC_DEMO_EMAIL` | Email shown on the merchant login demo panel |
 | `NEXT_PUBLIC_DEMO_PASSWORD` | Password shown on the merchant login demo panel |
 | `NEXT_PUBLIC_DEMO_MERCHANT_ID` | UUID of the demo merchant row in the `merchants` table |

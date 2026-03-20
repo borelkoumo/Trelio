@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${process.env.APP_URL}/auth/callback?anon_id=${fideloAnonId}&merchant_id=${merchant_id || ''}`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000'}/auth/callback?anon_id=${fideloAnonId}&merchant_id=${merchant_id || ''}`,
       },
     })
 

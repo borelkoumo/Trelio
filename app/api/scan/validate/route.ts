@@ -20,6 +20,7 @@ export async function POST(request: Request) {
     try {
       const jsonString = Buffer.from(data, 'base64').toString('utf-8')
       const payload = JSON.parse(jsonString)
+      console.log("Decoded QR payload:", payload)
       merchantId = payload.merchant_id
     } catch (e) {
       return NextResponse.json({ valid: false, error: 'Invalid QR format' }, { status: 400 })
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       .eq('id', merchantId)
       .single()
 
+      console.log('error:', error)
     if (error || !merchant) {
       return NextResponse.json({ valid: false, error: 'Merchant not found' }, { status: 404 })
     }
@@ -43,7 +45,14 @@ export async function POST(request: Request) {
     const validation = validateQRData(data, merchant.secret_key)
 
     if (!validation.valid) {
-      return NextResponse.json({ valid: false, error: validation.error }, { status: 400 })
+      // On expiry, return merchant info so the client can still show the loyalty card
+      const merchantInfo = validation.error === 'QR code expired' ? {
+        id: merchant.id,
+        name: merchant.name,
+        reward_threshold: merchant.reward_threshold,
+        reward_description: merchant.reward_description,
+      } : undefined
+      return NextResponse.json({ valid: false, error: validation.error, merchant: merchantInfo }, { status: 400 })
     }
 
     return NextResponse.json({

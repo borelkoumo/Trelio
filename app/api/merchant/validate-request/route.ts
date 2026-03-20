@@ -54,13 +54,14 @@ export async function POST(request: Request) {
       throw updateError
     }
 
-    // If approved, add a point
+    // If approved, add a point (carry device_type from validation request)
     if (action === 'approve') {
       const { error: pointError } = await supabase
         .from('points')
         .insert({
           user_id: validationRequest.user_id,
           merchant_id: merchant.id,
+          device_type: validationRequest.device_type || null,
         })
 
       if (pointError) {

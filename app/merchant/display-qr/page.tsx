@@ -18,6 +18,8 @@ interface MerchantInfo {
 interface ValidationRequest {
   id: string
   user_id: string
+  user_email: string | null
+  device_type: string | null
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
 }
@@ -77,14 +79,15 @@ export default function DisplayQRPage() {
     let wakeLock: WakeLockSentinel | null = null
     const requestWakeLock = async () => {
       try {
-        if ('wakeLock' in navigator) {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible') {
           wakeLock = await navigator.wakeLock.request('screen')
         }
       } catch (err) {
-        console.error('Wake Lock error:', err)
+        // Silently ignore — wake lock is a best-effort enhancement
       }
     }
     requestWakeLock()
+    document.addEventListener('visibilitychange', requestWakeLock)
 
     // Setup Realtime subscription for manual validation
     let subscription: ReturnType<typeof supabase.channel> | null = null
@@ -117,6 +120,7 @@ export default function DisplayQRPage() {
 
     return () => {
       clearInterval(interval)
+      document.removeEventListener('visibilitychange', requestWakeLock)
       if (wakeLock) {
         wakeLock.release().catch(console.error)
       }
@@ -190,10 +194,10 @@ export default function DisplayQRPage() {
           {qrData ? (
             <QRCodeSVG
               value={earnUrl}
-              size={300}
+              size={220}
               level="H"
               includeMargin={false}
-              className="w-full h-auto max-w-[300px]"
+              className="w-full h-auto max-w-[220px]"
             />
           ) : (
             <div className="w-[300px] h-[300px] flex items-center justify-center text-zinc-500 text-center">
@@ -232,12 +236,17 @@ export default function DisplayQRPage() {
                 {t('merchant.waitingCustomers')}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[240px] overflow-y-auto pr-1">
                 {requests.map((req) => (
                   <div key={req.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between animate-in slide-in-from-bottom-2">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="font-medium text-white">{t('merchant.newRequest')}</span>
-                      <span className="text-xs text-zinc-500 font-mono">{req.user_id.substring(0, 8)}...</span>
+                      {req.device_type && (
+                        <span className="text-xs text-zinc-400">{req.device_type}</span>
+                      )}
+                      <span className="text-xs text-zinc-500 font-mono truncate">
+                        {req.user_email ?? `${req.user_id.substring(0, 8)}…`}
+                      </span>
                     </div>
                     <div className="flex gap-2">
                       <Button

@@ -26,6 +26,7 @@ interface MerchantStats {
 
 interface MerchantInfo {
   id: string
+  code: string
   name: string
 }
 
@@ -36,6 +37,7 @@ interface Scan {
   created_at: string
   email: string | null
   is_anonymous: boolean
+  device_type: string | null
 }
 
 export default function MerchantDashboard() {
@@ -255,18 +257,19 @@ export default function MerchantDashboard() {
                   <TableHead className="font-semibold text-zinc-900">{t('merchant.dateAndTime')}</TableHead>
                   <TableHead className="font-semibold text-zinc-900">{t('merchant.customer')}</TableHead>
                   <TableHead className="font-semibold text-zinc-900">{t('merchant.type')}</TableHead>
+                  <TableHead className="font-semibold text-zinc-900">{t('merchant.device')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loadingTable ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-32 text-center">
+                    <TableCell colSpan={4} className="h-32 text-center">
                       <Loader2 className="h-6 w-6 animate-spin text-zinc-400 mx-auto" />
                     </TableCell>
                   </TableRow>
                 ) : scans.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-32 text-center text-zinc-500">
+                    <TableCell colSpan={4} className="h-32 text-center text-zinc-500">
                       {t('merchant.noScans')}
                     </TableCell>
                   </TableRow>
@@ -295,6 +298,9 @@ export default function MerchantDashboard() {
                             {t('merchant.registered')}
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-zinc-500 text-xs whitespace-nowrap">
+                        {scan.device_type || '—'}
                       </TableCell>
                     </TableRow>
                   ))

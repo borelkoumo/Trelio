@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 const configSchema = z.object({
+  code: z.string().min(1).regex(/^[A-Z0-9_]+$/, 'Code must be uppercase letters, digits, and underscores').optional(),
   name: z.string().min(1).optional(),
   reward_threshold: z.number().min(1).optional(),
   reward_description: z.string().min(1).optional(),

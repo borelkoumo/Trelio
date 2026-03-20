@@ -1,26 +1,30 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { cookies } from 'next/headers'
 
 const addPointSchema = z.object({
-  merchant_id: z.string(),
-  qr_data: z.string(), // We need to re-validate the QR to prevent replay attacks
+  merchant_id: z.string().uuid(),
+  qr_data: z.string(),
+  device_type: z.string().optional(),
 })
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { merchant_id, qr_data } = addPointSchema.parse(body)
+    const { merchant_id, qr_data, device_type } = addPointSchema.parse(body)
 
     const cookieStore = await cookies()
     const fideloAnonId = cookieStore.get('fidelo_anon_id')?.value
 
     const supabase = await createAdminClient()
-    
-    // Get user if authenticated
-    const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id || fideloAnonId
+
+    // Use regular server client (reads session cookies) to identify the user
+    const serverClient = await createClient()
+    const { data: { user } } = await serverClient.auth.getUser()
+    // Prefer fideloAnonId (anonymous customer); don't leak merchant email in demo mode
+    const userId = fideloAnonId || user?.id
+    const userEmail = fideloAnonId ? null : user?.email ?? null
 
     if (!userId) {
       return NextResponse.json({ error: 'User identification missing' }, { status: 401 })
@@ -70,7 +74,9 @@ export async function POST(request: Request) {
         .insert({
           user_id: userId,
           merchant_id: merchant_id,
-          status: 'pending'
+          status: 'pending',
+          device_type: device_type || null,
+          user_email: userEmail,
         })
         .select()
         .single()
@@ -93,6 +99,7 @@ export async function POST(request: Request) {
       .insert({
         user_id: userId,
         merchant_id: merchant_id,
+        device_type: device_type || null,
       })
 
     if (insertError) {

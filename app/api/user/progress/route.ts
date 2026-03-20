@@ -1,22 +1,27 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const merchantId = searchParams.get('merchant_id')
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-    if (!merchantId) {
-      return NextResponse.json({ error: 'Missing merchant_id' }, { status: 400 })
+    if (!merchantId || !uuidRe.test(merchantId)) {
+      return NextResponse.json({ error: 'Missing or invalid merchant_id' }, { status: 400 })
     }
 
     const cookieStore = await cookies()
     const fideloAnonId = cookieStore.get('fidelo_anon_id')?.value
 
+    // Use createClient (reads session cookies) to identify authenticated users
+    const serverClient = await createClient()
+    const { data: { user } } = await serverClient.auth.getUser()
+    // Prefer fideloAnonId (anonymous customer); fall back to authenticated user id
+    const userId = fideloAnonId || user?.id
+
     const supabase = await createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const userId = user?.id || fideloAnonId
 
     if (!userId) {
       return NextResponse.json({ error: 'User identification missing' }, { status: 401 })
