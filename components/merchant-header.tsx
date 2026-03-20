@@ -32,15 +32,6 @@ export function MerchantHeader() {
             <Store className="h-5 w-5 text-zinc-900" />
             <span className="font-bold text-lg text-zinc-900">Trelio</span>
           </Link>
-          
-          <nav className="hidden md:flex items-center gap-1">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-zinc-500 rounded-full h-9">
-                <Globe className="h-4 w-4 mr-2" />
-                {t('nav.home') || 'Website'}
-              </Button>
-            </Link>
-          </nav>
         </div>
 
         <div className="flex items-center gap-2">
@@ -49,11 +40,6 @@ export function MerchantHeader() {
               <Menu className="h-5 w-5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 rounded-2xl p-1">
-              <DropdownMenuItem render={<Link href="/" />} className="rounded-xl cursor-pointer flex items-center py-3 px-3 text-sm font-medium">
-                <Globe className="h-4 w-4 mr-3 shrink-0" />
-                {t('nav.home') || 'Website'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem render={<Link href="/merchant/settings" />} className="rounded-xl cursor-pointer flex items-center py-3 px-3 text-sm font-medium">
                 <Settings className="h-4 w-4 mr-3 shrink-0" />
                 {t('merchant.settings')}

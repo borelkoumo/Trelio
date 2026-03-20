@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Loader2, ScanLine, Users, Gift, Search, Calendar, ChevronLeft, ChevronRight, QrCode, SlidersHorizontal, ChevronDown } from 'lucide-react'
+import { Loader2, ScanLine, Users, Gift, Search, Calendar, ChevronLeft, ChevronRight, QrCode, SlidersHorizontal, ChevronDown, Globe } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
 import { MerchantHeader } from '@/components/merchant-header'
@@ -143,10 +144,10 @@ export default function MerchantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-12">
+    <div className="min-h-screen bg-zinc-50 flex flex-col">
       <MerchantHeader />
 
-      <main className="max-w-5xl mx-auto px-6 mt-8">
+      <main className="flex-1 max-w-5xl mx-auto px-6 mt-8 w-full pb-12">
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-zinc-500 mb-0.5">{t('merchant.welcome').replace(',', '').trim()}</p>
@@ -388,6 +389,16 @@ export default function MerchantDashboard() {
           )}
         </div>
       </main>
+
+      <footer className="border-t border-zinc-200 bg-white mt-auto">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between text-sm text-zinc-400">
+          <span>© {new Date().getFullYear()} Trelio. All rights reserved.</span>
+          <Link href="/" className="hover:text-zinc-900 transition-colors flex items-center gap-1.5">
+            <Globe className="h-3.5 w-3.5" />
+            trelio.app
+          </Link>
+        </div>
+      </footer>
     </div>
   )
 }
