@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,18 +19,22 @@ export default function MerchantLogin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showDemo, setShowDemo] = useState(true)
-  const router = useRouter()
   const supabase = createClient()
   const { t } = useLanguage()
 
-  // Listen for auth state changes — this fires only after the session cookies
-  // are fully committed, making the redirect reliable in all cases.
+  // Listen for auth state changes and hard-redirect on session creation.
+  // window.location.href (full page reload) is used instead of router.push
+  // because on mobile browsers the client-side router can navigate before
+  // the Supabase session cookie is fully written, causing the middleware to
+  // bounce the user back to /login.
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) router.push('/merchant')
+      if (_event === 'SIGNED_IN' && session) {
+        window.location.href = '/merchant'
+      }
     })
     return () => subscription.unsubscribe()
-  }, [supabase, router])
+  }, [supabase])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
