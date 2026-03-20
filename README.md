@@ -1,4 +1,9 @@
-# Trelio — QR-based Loyalty Card Platform
+<div align="center">
+  <h1>Trelio</h1>
+  <p>QR-based loyalty card platform for merchants — no app required for customers.</p>
+</div>
+
+---
 
 Trelio lets merchants run a digital loyalty card programme without requiring customers to install an app. Customers scan a QR code, earn points anonymously, and optionally link their account to save points across visits.
 
@@ -30,7 +35,6 @@ cp .env.example .env
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key (server-side only) |
 | `APP_URL` | Public URL of the deployment (e.g. `https://trelio.io`) |
-| `GEMINI_API_KEY` | Gemini API key (injected automatically by AI Studio) |
 | `NEXT_PUBLIC_DEMO_EMAIL` | Email shown on the merchant login demo panel |
 | `NEXT_PUBLIC_DEMO_PASSWORD` | Password shown on the merchant login demo panel |
 | `NEXT_PUBLIC_DEMO_MERCHANT_ID` | UUID of the demo merchant row in the `merchants` table |
