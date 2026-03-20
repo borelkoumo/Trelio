@@ -25,13 +25,9 @@ export default function MerchantLogin() {
   const { t } = useLanguage()
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/merchant')
-      }
-    }
-    checkSession()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/merchant')
+    })
   }, [supabase.auth, router])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -40,7 +36,6 @@ export default function MerchantLogin() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      toast.success('Logged in successfully')
       router.push('/merchant')
     } catch (error: any) {
       toast.error('Error', { description: error.message || 'Failed to sign in' })
@@ -57,86 +52,86 @@ export default function MerchantLogin() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12">
-      <div className="w-full max-w-md md:max-w-3xl">
-        <div className="flex flex-col md:flex-row items-stretch gap-4">
+      <div className="w-full max-w-sm flex flex-col gap-3">
 
-          {/* Demo credentials panel — left column on desktop, top on mobile */}
-          <AnimatePresence>
-            {hasDemo && showDemo && (
-              <motion.div
-                key="demo-panel"
-                initial={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12, transition: { duration: 0.25, ease: 'easeInOut' } }}
-                className="md:w-72 shrink-0 bg-zinc-900 text-white rounded-3xl p-6 flex flex-col"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span className="text-sm font-semibold">{t('login.demoTitle')}</span>
-                </div>
-                <p className="text-xs text-zinc-400 mb-4 leading-relaxed flex-1">{t('login.demoDesc')}</p>
-                <div className="bg-zinc-800 rounded-xl p-3 mb-4 space-y-1.5">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs text-zinc-500 shrink-0">Email</span>
-                    <span className="text-xs font-mono text-zinc-200 truncate">{DEMO_EMAIL}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs text-zinc-500 shrink-0">Password</span>
-                    <span className="text-xs font-mono text-zinc-200">{DEMO_PASSWORD}</span>
-                  </div>
+        {/* Demo banner — sits above the form, disappears smoothly */}
+        <AnimatePresence>
+          {hasDemo && showDemo && (
+            <motion.div
+              key="demo-panel"
+              initial={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -6, height: 0, marginBottom: 0, transition: { duration: 0.22, ease: 'easeInOut' } }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white border border-zinc-100 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+                <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-zinc-500 leading-snug">
+                    {t('login.demoDesc')}
+                    {' '}
+                    <span className="font-mono text-zinc-700">{DEMO_EMAIL}</span>
+                    {' / '}
+                    <span className="font-mono text-zinc-700">{DEMO_PASSWORD}</span>
+                  </p>
                 </div>
                 <Button
                   type="button"
                   onClick={fillDemoCredentials}
-                  className="w-full h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
+                  size="sm"
+                  className="shrink-0 h-7 px-3 rounded-full bg-zinc-900 text-white hover:bg-zinc-700 text-xs font-medium"
                 >
                   {t('login.demoFill')}
                 </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Login form */}
-          <div className="flex-1 bg-white p-8 rounded-3xl shadow-sm border border-zinc-100">
-            <div className="flex justify-center mb-6">
-              <div className="h-16 w-16 bg-zinc-900 rounded-2xl flex items-center justify-center">
-                <Store className="h-8 w-8 text-white" />
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Login form */}
+        <div className="bg-white p-8 rounded-3xl shadow-sm border border-zinc-100">
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-16 bg-zinc-900 rounded-2xl flex items-center justify-center">
+              <Store className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-center text-zinc-900 mb-2">{t('login.title')}</h1>
-            <p className="text-center text-zinc-500 mb-8">{t('login.subtitle')}</p>
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">{t('login.email')}</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="merchant@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-12 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{t('login.password')}</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 rounded-xl"
-                />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full h-12 rounded-full bg-zinc-900 text-white hover:bg-zinc-800">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : t('login.submit')}
-              </Button>
-            </form>
           </div>
+          <h1 className="text-2xl font-bold text-center text-zinc-900 mb-2">{t('login.title')}</h1>
+          <p className="text-center text-zinc-500 mb-8">{t('login.subtitle')}</p>
 
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">{t('login.email')}</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="merchant@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="h-12 rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{t('login.password')}</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                className="h-12 rounded-xl"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : t('login.submit')}
+            </Button>
+          </form>
         </div>
+
       </div>
     </div>
   )
