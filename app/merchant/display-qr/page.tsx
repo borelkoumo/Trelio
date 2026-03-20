@@ -149,11 +149,13 @@ export default function DisplayQRPage() {
     }
   }
 
-  const earnUrl = qrData ? `${window.location.origin}/earn-points?data=${encodeURIComponent(qrData)}` : ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const earnUrl = qrData ? `${origin}/earn-points?data=${encodeURIComponent(qrData)}` : ''
 
   // Show the "open customer view" debug link on localhost (all merchants)
   // and in production only for the designated demo merchant.
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   const isDemoMerchant = merchant?.id === process.env.NEXT_PUBLIC_DEMO_MERCHANT_ID
   const showCustomerLink = (isLocalhost || isDemoMerchant) && !!earnUrl
 
