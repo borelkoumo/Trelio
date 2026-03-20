@@ -51,9 +51,13 @@ function getDeviceType(): string {
 // ---------------------------------------------------------------------------
 
 function EarnPointsContent() {
-  const qrData = useSearchParams().get('data')
-  if (!qrData) return <ScanLanding />
-  return <EarnPointsWithQR qrData={qrData} />
+  const params = useSearchParams()
+  const qrData = params.get('data')
+  const earned = params.get('earned')
+
+  if (qrData) return <EarnPointsWithQR qrData={qrData} />
+  if (earned === '1') return <EarnedView />
+  return <ScanLanding />
 }
 
 // ---------------------------------------------------------------------------
@@ -82,13 +86,15 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
   const [qrExpired, setQrExpired] = useState(false)
   const [qrExpiredDialogOpen, setQrExpiredDialogOpen] = useState(false)
 
-  // Clean up the ?data= param from the URL once the point is earned so
-  // a page refresh doesn't re-trigger the QR validation flow.
+  // After earning, store merchant context in sessionStorage and swap ?data= for
+  // ?earned=1 so a page refresh restores the save-CTA view (EarnedView) instead
+  // of re-triggering the QR validation flow.
   useEffect(() => {
-    if (pointEarned) {
-      window.history.replaceState(null, '', '/earn-points')
+    if (pointEarned && merchant) {
+      sessionStorage.setItem('earned_merchant', JSON.stringify(merchant))
+      window.history.replaceState(null, '', '/earn-points?earned=1')
     }
-  }, [pointEarned])
+  }, [pointEarned, merchant])
 
   // ---------------------------------------------------------------------------
   // QR validation on mount
@@ -368,6 +374,121 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
       <QrExpiredDialog
         open={qrExpiredDialogOpen}
         onClose={() => setQrExpiredDialogOpen(false)}
+      />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Earned view — shown when ?earned=1 (after page refresh post-scan)
+// ---------------------------------------------------------------------------
+
+function EarnedView() {
+  const { t } = useLanguage()
+  const [merchant, setMerchant] = useState<MerchantInfo | null>(null)
+  const [progress, setProgress] = useState<ProgressInfo | null>(null)
+  const [showLinkDialog, setShowLinkDialog] = useState(false)
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem('earned_merchant')
+    if (!stored) return
+    try {
+      const m: MerchantInfo = JSON.parse(stored)
+      setMerchant(m)
+      fetch(`/api/user/progress?merchant_id=${m.id}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setProgress(data) })
+        .catch(() => {})
+    } catch { /* corrupted storage — fall through to ScanLanding */ }
+  }, [])
+
+  // No stored merchant (e.g. new tab opened with ?earned=1) — fall back to landing
+  if (merchant === null && typeof window !== 'undefined' && !sessionStorage.getItem('earned_merchant')) {
+    return <ScanLanding />
+  }
+
+  if (!merchant) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      </div>
+    )
+  }
+
+  const handleClose = () => {
+    sessionStorage.removeItem('earned_merchant')
+    window.location.href = '/earn-points'
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans">
+
+      {/* Close button */}
+      <motion.button
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.15 }}
+        onClick={handleClose}
+        aria-label={t('earn.closeTab')}
+        className="fixed top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-white transition-colors cursor-pointer"
+      >
+        <X className="h-4 w-4" />
+      </motion.button>
+
+      <main className="flex-1 px-6 pt-6 pb-10 flex flex-col items-center max-w-md mx-auto w-full">
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full bg-white rounded-3xl shadow-sm border border-zinc-100 p-8 flex flex-col items-center text-center"
+        >
+          <div className="h-16 w-16 bg-zinc-100 rounded-2xl flex items-center justify-center mb-6">
+            <span className="text-2xl font-bold text-zinc-900">{merchant.name.charAt(0)}</span>
+          </div>
+          <h1 className="text-2xl font-bold text-zinc-900 mb-1">{merchant.name}</h1>
+          <p className="text-zinc-500 text-sm mb-8">{t('earn.digitalCard')}</p>
+
+          {progress && (
+            <div className="w-full mb-8">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-4xl font-bold text-zinc-900">{progress.points}</span>
+                <span className="text-zinc-500 font-medium">/ {merchant.reward_threshold}</span>
+              </div>
+              <Progress value={(progress.points / merchant.reward_threshold) * 100} className="h-3 bg-zinc-100" />
+              <p className="text-sm text-zinc-500 mt-3 flex items-center justify-center gap-1.5">
+                <Gift className="h-4 w-4" /> {merchant.reward_description}
+              </p>
+            </div>
+          )}
+
+          <SaveCtaButton onClick={() => setShowLinkDialog(true)} />
+        </motion.div>
+
+        <EducationBanner />
+
+        {progress?.history && progress.history.length > 0 && (
+          <div className="w-full mt-8">
+            <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <History className="h-4 w-4" /> {t('earn.recent')}
+            </h3>
+            <div className="space-y-3">
+              {progress.history.slice(0, 5).map(item => (
+                <div key={item.id} className="bg-white p-4 rounded-xl border border-zinc-100 flex justify-between items-center shadow-sm">
+                  <span className="font-medium text-zinc-900">{t('earn.plusOne')}</span>
+                  <span className="text-sm text-zinc-500">
+                    {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      <LinkAccountDialog
+        open={showLinkDialog}
+        onClose={() => setShowLinkDialog(false)}
+        merchantId={merchant.id}
       />
     </div>
   )

@@ -1,26 +1,31 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Camera, History, ScanLine } from 'lucide-react'
+import { Camera, History, ScanLine, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { motion } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
 
-interface ScanHistoryItem {
-  id: string
+interface MerchantHistory {
+  merchant_id: string
   merchant_name: string
-  date: string
+  points: number
+  threshold: number
+  reward_description: string
+  last_scan: string
+  history: { id: string; date: string }[]
 }
 
 export function ScanLanding() {
   const { t } = useLanguage()
   const cameraInputRef = useRef<HTMLInputElement>(null)
-  const [history, setHistory] = useState<ScanHistoryItem[]>([])
+  const [merchants, setMerchants] = useState<MerchantHistory[]>([])
 
   useEffect(() => {
     fetch('/api/user/history')
       .then(r => r.json())
-      .then(data => setHistory(data.history ?? []))
+      .then(data => setMerchants(data.merchants ?? []))
       .catch(() => {})
   }, [])
 
@@ -60,12 +65,11 @@ export function ScanLanding() {
             accept="image/*"
             capture="environment"
             className="hidden"
-            // No onChange handler: native QR scanning on the device handles the redirect
           />
         </motion.div>
 
-        {/* Scan history */}
-        {history.length > 0 && (
+        {/* Per-merchant history */}
+        {merchants.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -75,26 +79,57 @@ export function ScanLanding() {
             <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider mb-4 flex items-center gap-2">
               <History className="h-4 w-4" /> {t('scan.history')}
             </h3>
-            <div className="space-y-3">
-              {history.map(item => (
-                <div
-                  key={item.id}
-                  className="bg-white p-4 rounded-xl border border-zinc-100 flex justify-between items-center shadow-sm"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-zinc-900">{item.merchant_name}</p>
-                    <p className="text-xs text-zinc-400">+1 point</p>
+
+            <div className="space-y-4">
+              {merchants.map(m => {
+                const effectivePoints = Math.max(0, m.points)
+                const progressPct = Math.min(100, (effectivePoints / m.threshold) * 100)
+
+                return (
+                  <div key={m.merchant_id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+
+                    {/* Merchant header */}
+                    <div className="p-4 pb-3 flex items-center gap-3">
+                      <div className="h-10 w-10 bg-zinc-100 rounded-xl flex items-center justify-center shrink-0">
+                        <span className="text-base font-bold text-zinc-900">{m.merchant_name.charAt(0)}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-zinc-900 truncate">{m.merchant_name}</p>
+                        <p className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5">
+                          <Gift className="h-3 w-3" /> {m.reward_description}
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-zinc-900 shrink-0">
+                        {effectivePoints}
+                        <span className="text-xs font-normal text-zinc-400"> / {m.threshold}</span>
+                      </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="px-4 pb-3">
+                      <Progress value={progressPct} className="h-2 bg-zinc-100" />
+                    </div>
+
+                    {/* Last 3 scans */}
+                    {m.history.slice(0, 3).map(item => (
+                      <div
+                        key={item.id}
+                        className="px-4 py-2.5 border-t border-zinc-50 flex justify-between items-center"
+                      >
+                        <span className="text-xs font-medium text-zinc-600">+1 point</span>
+                        <span className="text-xs text-zinc-400">
+                          {new Date(item.date).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-xs text-zinc-500">
-                    {new Date(item.date).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </motion.div>
         )}
