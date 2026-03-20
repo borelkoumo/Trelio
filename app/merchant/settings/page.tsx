@@ -109,7 +109,7 @@ export default function MerchantSettings() {
         </div>
 
         <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm">
-          <form onSubmit={handleSaveConfig} className="space-y-6">
+          <form onSubmit={handleSaveConfig} className="space-y-6 max-w-sm mx-auto">
             <div className="space-y-2">
               <Label htmlFor="name">{t('merchant.storeName')}</Label>
               <Input
@@ -221,7 +221,7 @@ export default function MerchantSettings() {
               </div>
             </div>
 
-            <Button type="submit" disabled={saving} className="h-12 px-8 rounded-full bg-zinc-900 text-white hover:bg-zinc-800">
+            <Button type="submit" disabled={saving} className="h-12 px-8 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 w-full">
               {saving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
               {t('merchant.saveChanges')}
             </Button>

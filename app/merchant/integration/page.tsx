@@ -94,16 +94,15 @@ export default function MerchantIntegration() {
           <div className="space-y-6">
             <div className="space-y-2">
               <Label>{t('merchant.merchantId')}</Label>
-              <div className="flex gap-2">
-                <Input readOnly value={merchant.id} className="h-12 rounded-xl font-mono text-sm bg-zinc-50" />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="h-12 w-12 rounded-full shrink-0 hover:bg-zinc-100"
+              <div className="relative">
+                <Input readOnly value={merchant.id} className="h-12 rounded-xl font-mono text-sm bg-zinc-50 pr-14" />
+                <button
+                  type="button"
                   onClick={() => copyToClipboard(merchant.id, 'id')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 rounded-lg bg-zinc-900 hover:bg-zinc-700 text-white flex items-center justify-center transition-colors"
                 >
-                  {copiedId ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
-                </Button>
+                  {copiedId ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -112,21 +111,20 @@ export default function MerchantIntegration() {
                 {t('merchant.secretKey')}
                 <span className="text-xs font-normal bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{t('merchant.keepSecret')}</span>
               </Label>
-              <div className="flex gap-2">
-                <Input 
-                  readOnly 
-                  type="password" 
-                  value={merchant.secret_key} 
-                  className="h-12 rounded-xl font-mono text-sm bg-zinc-50" 
+              <div className="relative">
+                <Input
+                  readOnly
+                  type="password"
+                  value={merchant.secret_key}
+                  className="h-12 rounded-xl font-mono text-sm bg-zinc-50 pr-14"
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="h-12 w-12 rounded-full shrink-0 hover:bg-zinc-100"
+                <button
+                  type="button"
                   onClick={() => copyToClipboard(merchant.secret_key, 'key')}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 rounded-lg bg-zinc-900 hover:bg-zinc-700 text-white flex items-center justify-center transition-colors"
                 >
-                  {copiedKey ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <Copy className="h-5 w-5" />}
-                </Button>
+                  {copiedKey ? <CheckCircle2 className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                </button>
               </div>
               <p className="text-sm text-zinc-500 mt-2">
                 {t('merchant.doNotShare')}

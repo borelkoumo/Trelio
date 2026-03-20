@@ -36,6 +36,7 @@ export default function MerchantLogin() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      console.log('Login successful')
       router.push('/merchant')
     } catch (error: any) {
       toast.error('Error', { description: error.message || 'Failed to sign in' })
@@ -51,32 +52,48 @@ export default function MerchantLogin() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
       <div className="w-full max-w-sm flex flex-col gap-3">
-
         {/* Demo panel — sits above the form, disappears smoothly */}
         <AnimatePresence>
           {hasDemo && showDemo && (
             <motion.div
               key="demo-panel"
-              initial={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -6, height: 0, transition: { duration: 0.22, ease: 'easeInOut' } }}
+              initial={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{
+                opacity: 0,
+                y: -6,
+                height: 0,
+                transition: { duration: 0.22, ease: "easeInOut" },
+              }}
               className="overflow-hidden"
             >
               <div className="bg-zinc-900 text-white rounded-3xl p-6 flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span className="text-sm font-semibold">{t('login.demoTitle')}</span>
+                  <span className="text-sm font-semibold">
+                    {t("login.demoTitle")}
+                  </span>
                 </div>
-                <p className="text-xs text-zinc-400 mb-4 leading-relaxed">{t('login.demoDesc')}</p>
+                <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+                  {t("login.demoDesc")}
+                </p>
                 <div className="bg-zinc-800 rounded-xl p-3 mb-4 space-y-1.5">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs text-zinc-500 shrink-0">Email</span>
-                    <span className="text-xs font-mono text-zinc-200 truncate">{DEMO_EMAIL}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">
+                      Email
+                    </span>
+                    <span className="text-xs font-mono text-zinc-200 truncate">
+                      {DEMO_EMAIL}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs text-zinc-500 shrink-0">Password</span>
-                    <span className="text-xs font-mono text-zinc-200">{DEMO_PASSWORD}</span>
+                    <span className="text-xs text-zinc-500 shrink-0">
+                      Password
+                    </span>
+                    <span className="text-xs font-mono text-zinc-200">
+                      {DEMO_PASSWORD}
+                    </span>
                   </div>
                 </div>
                 <Button
@@ -84,7 +101,7 @@ export default function MerchantLogin() {
                   onClick={fillDemoCredentials}
                   className="w-full h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium"
                 >
-                  {t('login.demoFill')}
+                  {t("login.demoFill")}
                 </Button>
               </div>
             </motion.div>
@@ -98,30 +115,36 @@ export default function MerchantLogin() {
               <Store className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-center text-zinc-900 mb-2">{t('login.title')}</h1>
-          <p className="text-center text-zinc-500 mb-8">{t('login.subtitle')}</p>
+          <h1 className="text-2xl font-bold text-center text-zinc-900 mb-2">
+            {t("login.title")}
+          </h1>
+          <p className="text-center text-zinc-500 mb-8">
+            {t("login.subtitle")}
+          </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{t('login.email')}</Label>
+              <Label htmlFor="email">{t("login.email")}</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="merchant@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="username"
                 required
                 className="h-12 rounded-xl"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t('login.password')}</Label>
+              <Label htmlFor="password">{t("login.password")}</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
+                autoComplete="current-password"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="h-12 rounded-xl"
               />
@@ -131,12 +154,15 @@ export default function MerchantLogin() {
               disabled={loading}
               className="w-full h-12 rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : t('login.submit')}
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                t("login.submit")
+              )}
             </Button>
           </form>
         </div>
-
       </div>
     </div>
-  )
+  );
 }

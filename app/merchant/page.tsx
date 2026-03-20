@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Loader2, ScanLine, Users, Gift, Search, Calendar, ChevronLeft, ChevronRight, QrCode } from 'lucide-react'
+import { Loader2, ScanLine, Users, Gift, Search, Calendar, ChevronLeft, ChevronRight, QrCode, SlidersHorizontal, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
 import { MerchantHeader } from '@/components/merchant-header'
 import {
@@ -53,6 +54,7 @@ export default function MerchantDashboard() {
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('')
   const [loadingTable, setLoadingTable] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -221,33 +223,79 @@ export default function MerchantDashboard() {
         </div>
 
         <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-zinc-900">{t('merchant.recentScans')}</h2>
-            
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                <Input 
-                  placeholder={t('merchant.searchPlaceholder')} 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 rounded-full h-10 w-full sm:w-64"
-                />
-              </div>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                <Input 
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => {
-                    setDateFilter(e.target.value)
-                    setPage(1)
-                  }}
-                  className="pl-9 rounded-full h-10 w-full sm:w-48"
-                />
-              </div>
-              <Button type="submit" className="rounded-full h-10 px-6">{t('merchant.filter')}</Button>
-            </form>
+          <div className="p-6 border-b border-zinc-100">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-zinc-900">{t('merchant.recentScans')}</h2>
+
+              {/* Mobile: accordion toggle */}
+              <button
+                type="button"
+                onClick={() => setShowFilters(v => !v)}
+                className="sm:hidden flex items-center gap-1.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-full px-3 h-8 transition-colors"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {t('merchant.filter')}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Desktop: filters always visible */}
+              <form onSubmit={handleSearch} className="hidden sm:flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  <Input
+                    placeholder={t('merchant.searchPlaceholder')}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9 rounded-full h-10 w-64"
+                  />
+                </div>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  <Input
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => { setDateFilter(e.target.value); setPage(1) }}
+                    className="pl-9 rounded-full h-10 w-48"
+                  />
+                </div>
+                <Button type="submit" className="rounded-full h-10 px-6">{t('merchant.filter')}</Button>
+              </form>
+            </div>
+
+            {/* Mobile: collapsible filters */}
+            <AnimatePresence initial={false}>
+              {showFilters && (
+                <motion.form
+                  key="mobile-filters"
+                  onSubmit={handleSearch}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="sm:hidden overflow-hidden flex flex-col gap-3 pt-4"
+                >
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <Input
+                      placeholder={t('merchant.searchPlaceholder')}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9 rounded-full h-10 w-full"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <Input
+                      type="date"
+                      value={dateFilter}
+                      onChange={(e) => { setDateFilter(e.target.value); setPage(1) }}
+                      className="pl-9 rounded-full h-10 w-full"
+                    />
+                  </div>
+                  <Button type="submit" className="rounded-full h-10 px-6 w-full">{t('merchant.filter')}</Button>
+                </motion.form>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="overflow-x-auto">
