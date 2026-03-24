@@ -347,7 +347,7 @@ export default function MerchantDashboard() {
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl lg:text-2xl font-bold tracking-tight">{t('merchant.recentScans')}</h2>
-            <Link href="/merchant"
+            <Link href="/merchant/scans"
               className="group flex items-center gap-1.5 text-sm font-medium text-[#69f6b8] hover:text-white transition-colors">
               Voir tout
               <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
