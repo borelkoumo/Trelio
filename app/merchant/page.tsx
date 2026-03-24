@@ -4,21 +4,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { Loader2, ScanLine, Users, Gift, Search, Calendar, ChevronLeft, ChevronRight, QrCode, SlidersHorizontal, ChevronDown, Globe } from 'lucide-react'
+import {
+  Loader2, QrCode, Search, Calendar, ChevronLeft, ChevronRight,
+  SlidersHorizontal, ChevronDown, LogOut, Settings, Code, X, Menu,
+  LayoutDashboard, ScanLine, Users, Gift, Sparkles,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
-import { MerchantHeader } from '@/components/merchant-header'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 interface MerchantStats {
   totalScans: number
@@ -42,40 +35,50 @@ interface Scan {
   device_type: string | null
 }
 
-export default function MerchantDashboard() {
-  const [loading, setLoading] = useState(true)
-  const [merchant, setMerchant] = useState<MerchantInfo | null>(null)
-  const [stats, setStats] = useState<MerchantStats | null>(null)
-  
-  // Table state
-  const [scans, setScans] = useState<Scan[]>([])
-  const [totalScans, setTotalScans] = useState(0)
-  const [page, setPage] = useState(1)
-  const [limit] = useState(10)
-  const [search, setSearch] = useState('')
-  const [dateFilter, setDateFilter] = useState('')
-  const [loadingTable, setLoadingTable] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
+// ── Sidebar nav items ───────────────────────────────────────────────────────
+const NAV = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/merchant',             active: true  },
+  { icon: ScanLine,        label: 'Scans',     href: '/merchant/scans',       active: false },
+  { icon: QrCode,          label: 'Mon QR',    href: '/merchant/display-qr',  active: false },
+  { icon: Users,           label: 'Clients',   href: '/merchant',             active: false },
+  { icon: Gift,            label: 'Rewards',   href: '/merchant',             active: false },
+  { icon: Settings,        label: 'Settings',  href: '/merchant/settings',    active: false },
+]
 
-  const router = useRouter()
+export default function MerchantDashboard() {
+  const [loading, setLoading]           = useState(true)
+  const [merchant, setMerchant]         = useState<MerchantInfo | null>(null)
+  const [stats, setStats]               = useState<MerchantStats | null>(null)
+  const [scans, setScans]               = useState<Scan[]>([])
+  const [totalScans, setTotalScans]     = useState(0)
+  const [page, setPage]                 = useState(1)
+  const [limit]                         = useState(5)
+  const [search, setSearch]             = useState('')
+  const [dateFilter, setDateFilter]     = useState('')
+  const [loadingTable, setLoadingTable] = useState(false)
+  const [showFilters, setShowFilters]   = useState(false)
+  const [drawerOpen, setDrawerOpen]     = useState(false)
+
+  const router   = useRouter()
   const supabase = createClient()
-  const { t } = useLanguage()
+  const { t }    = useLanguage()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/merchant/login')
+  }
 
   const fetchDashboardData = useCallback(async () => {
     try {
       const res = await fetch('/api/merchant/stats')
-      if (res.status === 401) {
-        router.push('/merchant/login')
-        return
-      }
+      if (res.status === 401) { router.push('/merchant/login'); return }
       const data = await res.json()
       if (res.ok) {
         setMerchant(data.merchant)
-        // We will update stats from the scans API to reflect filters
       } else {
         toast.error(t('merchant.failedLoad'), { description: data.error })
       }
-    } catch (error) {
+    } catch {
       toast.error(t('merchant.failedLoad'))
     }
   }, [router, t])
@@ -83,41 +86,33 @@ export default function MerchantDashboard() {
   const fetchScans = useCallback(async () => {
     setLoadingTable(true)
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      })
+      const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() })
       if (search) params.append('search', search)
       if (dateFilter) params.append('date', dateFilter)
 
-      const res = await fetch(`/api/merchant/scans?${params.toString()}`)
+      const res  = await fetch(`/api/merchant/scans?${params.toString()}`)
       const data = await res.json()
-      
+
       if (res.ok) {
         setScans(data.scans)
         setTotalScans(data.total)
         setStats(prev => ({
           ...prev,
-          totalScans: data.stats.totalScans,
-          uniqueUsers: data.stats.uniqueUsers,
-          totalRewards: prev?.totalRewards || 0 // Keep rewards from overview if possible, or we need to add it to scans API. For now, we'll just use what we have or 0.
+          totalScans:   data.stats.totalScans,
+          uniqueUsers:  data.stats.uniqueUsers,
+          totalRewards: prev?.totalRewards || 0,
         }))
       }
-    } catch (error) {
-      console.error('Failed to fetch scans', error)
+    } catch (err) {
+      console.error('Failed to fetch scans', err)
     } finally {
       setLoadingTable(false)
       setLoading(false)
     }
   }, [page, limit, search, dateFilter])
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [fetchDashboardData])
-
-  useEffect(() => {
-    fetchScans()
-  }, [fetchScans])
+  useEffect(() => { fetchDashboardData() }, [fetchDashboardData])
+  useEffect(() => { fetchScans() },          [fetchScans])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -127,278 +122,352 @@ export default function MerchantDashboard() {
 
   const totalPages = Math.ceil(totalScans / limit)
 
+  // ── Loading / error states ─────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
       </div>
     )
   }
 
   if (!merchant || !stats) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">{t('merchant.failedData')}</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <p className="text-[#adaaaa]">{t('merchant.failedData')}</p>
       </div>
     )
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-zinc-50 flex flex-col">
-      <MerchantHeader />
+    <div className="min-h-screen bg-[#0e0e0e] text-white font-sans">
 
-      <main className="flex-1 max-w-5xl mx-auto px-6 mt-8 w-full pb-12">
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-zinc-500 mb-0.5">{t('merchant.welcome').replace(',', '').trim()}</p>
-            <h1 className="text-3xl font-bold text-zinc-900 mb-2">{merchant.name}</h1>
-            <p className="text-zinc-500 hidden sm:block">{t('merchant.manage')}</p>
+      {/* ── Mobile drawer overlay ────────────────────────────────────── */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/60 z-[55] lg:hidden"
+            onClick={() => setDrawerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Mobile drawer ────────────────────────────────────────────── */}
+      <aside className={`fixed inset-y-0 left-0 z-[60] w-[280px] bg-[#0e0e0e] rounded-r-2xl shadow-2xl flex flex-col gap-2 p-4 transition-transform duration-300 ease-in-out lg:hidden ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        {/* Profile */}
+        <div className="flex items-center gap-4 p-4 mb-4">
+          <div className="w-12 h-12 rounded-full bg-[#1a1919] flex items-center justify-center text-[#69f6b8] font-black text-lg shrink-0">
+            {merchant.name.charAt(0).toUpperCase()}
           </div>
-          <Button
+          <div className="overflow-hidden">
+            <h3 className="text-sm font-bold text-[#69f6b8] truncate">{merchant.name}</h3>
+            <p className="text-xs text-[#adaaaa]">Commerçant</p>
+          </div>
+          <button className="ml-auto p-1 text-[#adaaaa] hover:text-white" onClick={() => setDrawerOpen(false)}>
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex flex-col gap-1">
+          {NAV.map(({ icon: Icon, label, href, active }) => (
+            <Link key={label} href={href}
+              onClick={() => setDrawerOpen(false)}
+              className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all active:translate-x-1 duration-150 ${active ? 'bg-[#69f6b8]/10 text-[#69f6b8]' : 'text-[#adaaaa] hover:bg-[#262626] hover:text-white'}`}>
+              <Icon className="w-5 h-5" />
+              {label}
+            </Link>
+          ))}
+          <Link href="/merchant/integration"
+            onClick={() => setDrawerOpen(false)}
+            className="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-[#adaaaa] hover:bg-[#262626] hover:text-white transition-all duration-150">
+            <Code className="w-5 h-5" />
+            {t('merchant.integration')}
+          </Link>
+        </nav>
+
+        {/* Logout */}
+        <button onClick={handleLogout}
+          className="mt-auto flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all">
+          <LogOut className="w-5 h-5" />
+          {t('merchant.logout')}
+        </button>
+      </aside>
+
+      {/* ── Desktop sidebar ───────────────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 z-50 p-4 border-r border-[#494847]/15"
+        style={{ background: 'rgba(5,5,5,0.8)', backdropFilter: 'blur(20px)' }}>
+        {/* Logo */}
+        <div className="mb-10 px-4">
+          <h1 className="text-2xl font-black text-[#69f6b8] tracking-tighter">Trelio</h1>
+          <p className="text-[10px] text-[#adaaaa] tracking-widest uppercase mt-1 font-bold">Merchant Portal</p>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1">
+          {NAV.map(({ icon: Icon, label, href, active }) => (
+            <Link key={label} href={href}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active ? 'text-[#69f6b8] bg-[#1a1919] font-bold' : 'text-[#adaaaa] hover:text-white hover:bg-[#1a1919]/50'}`}>
+              <Icon className="w-5 h-5" />
+              {label}
+            </Link>
+          ))}
+          <Link href="/merchant/integration"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#adaaaa] hover:text-white hover:bg-[#1a1919]/50 transition-all duration-200">
+            <Code className="w-5 h-5" />
+            {t('merchant.integration')}
+          </Link>
+        </nav>
+
+        {/* Merchant card */}
+        <div className="mt-auto p-4 bg-[#1a1919] rounded-2xl flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-[#69f6b8] font-black shrink-0">
+            {merchant.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="overflow-hidden flex-1">
+            <p className="text-xs font-bold truncate">{merchant.name}</p>
+            <p className="text-[10px] text-[#adaaaa] truncate">Code: {merchant.code}</p>
+          </div>
+          <button onClick={handleLogout} title={t('merchant.logout')}
+            className="text-[#adaaaa] hover:text-red-400 transition-colors p-1">
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile top header ─────────────────────────────────────────── */}
+      <header className="lg:hidden fixed top-0 w-full z-50 h-16 flex items-center justify-between px-6 shadow-[0_48px_48px_rgba(172,138,255,0.04)]"
+        style={{ background: 'rgba(14,14,14,0.8)', backdropFilter: 'blur(20px)' }}>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setDrawerOpen(true)} className="text-[#adaaaa] hover:bg-[#262626] p-2 rounded-full transition-colors active:scale-95">
+            <Menu className="w-5 h-5" />
+          </button>
+          <span className="font-bold text-lg text-[#69f6b8] tracking-tight">Dashboard</span>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-[#262626] border border-[#494847]/15 flex items-center justify-center text-[#69f6b8] font-black text-sm">
+          {merchant.name.charAt(0).toUpperCase()}
+        </div>
+      </header>
+
+
+      {/* ── Main content ─────────────────────────────────────────────── */}
+      <main className="lg:ml-64 pt-20 lg:pt-8 pb-12 px-6 lg:px-12 space-y-10 lg:space-y-12">
+
+        {/* Welcome */}
+        <section className="space-y-1 pt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#adaaaa]">{t('merchant.welcome').replace(',', '').trim()}</p>
+          <h1 className="font-black tracking-tight leading-none text-[#69f6b8] text-2xl lg:text-[3.5rem]">
+            {merchant.name}
+          </h1>
+          <p className="text-[#adaaaa]/70 text-base mt-2 lg:hidden">{t('merchant.manage')}</p>
+        </section>
+
+        {/* ── QR button + Stats ───────────────────────────────────────── */}
+
+        {/* Mobile: stacked QR + stats grid */}
+        <div className="lg:hidden space-y-6">
+          <button
             onClick={() => router.push('/merchant/display-qr')}
-            className="w-full sm:w-auto h-12 px-6 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 shrink-0"
-          >
-            <QrCode className="mr-2 h-5 w-5" />
+            className="w-full bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-bold px-8 py-5 rounded-full flex items-center justify-center gap-3 active:scale-95 transition-all">
+            <QrCode className="w-5 h-5" />
             {t('merchant.showQrCode')}
-          </Button>
-        </div>
+          </button>
 
-        {/* Mobile: single compact stats widget */}
-        <div className="md:hidden bg-white rounded-3xl border border-zinc-100 shadow-sm mb-6 overflow-hidden">
-          <div className="grid grid-cols-3 divide-x divide-zinc-100">
-            <div className="flex flex-col items-center py-4 px-2">
-              <div className="h-8 w-8 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
-                <ScanLine className="h-4 w-4 text-blue-600" />
-              </div>
-              <span className="text-2xl font-bold text-zinc-900">{stats.totalScans}</span>
-              <span className="text-xs text-zinc-500 text-center leading-tight mt-1">{t('merchant.totalScans')}</span>
-            </div>
-            <div className="flex flex-col items-center py-4 px-2">
-              <div className="h-8 w-8 bg-emerald-50 rounded-xl flex items-center justify-center mb-2">
-                <Users className="h-4 w-4 text-emerald-600" />
-              </div>
-              <span className="text-2xl font-bold text-zinc-900">{stats.uniqueUsers}</span>
-              <span className="text-xs text-zinc-500 text-center leading-tight mt-1">{t('merchant.uniqueUsers')}</span>
-            </div>
-            <div className="flex flex-col items-center py-4 px-2">
-              <div className="h-8 w-8 bg-purple-50 rounded-xl flex items-center justify-center mb-2">
-                <Gift className="h-4 w-4 text-purple-600" />
-              </div>
-              <span className="text-2xl font-bold text-zinc-900">{stats.totalRewards || 0}</span>
-              <span className="text-xs text-zinc-500 text-center leading-tight mt-1">{t('merchant.rewardsRedeemed')}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: original 3 cards */}
-        <div className="hidden md:grid md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                <ScanLine className="h-5 w-5 text-blue-600" />
-              </div>
-              <h3 className="font-medium text-zinc-500">{t('merchant.totalScans')}</h3>
-            </div>
-            <span className="text-4xl font-bold text-zinc-900">{stats.totalScans}</span>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center">
-                <Users className="h-5 w-5 text-emerald-600" />
-              </div>
-              <h3 className="font-medium text-zinc-500">{t('merchant.uniqueUsers')}</h3>
-            </div>
-            <span className="text-4xl font-bold text-zinc-900">{stats.uniqueUsers}</span>
-          </div>
-
-          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                <Gift className="h-5 w-5 text-purple-600" />
-              </div>
-              <h3 className="font-medium text-zinc-500">{t('merchant.rewardsRedeemed')}</h3>
-            </div>
-            <span className="text-4xl font-bold text-zinc-900">{stats.totalRewards || 0}</span>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-zinc-100">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-zinc-900">{t('merchant.recentScans')}</h2>
-
-              {/* Mobile: accordion toggle */}
-              <button
-                type="button"
-                onClick={() => setShowFilters(v => !v)}
-                className="sm:hidden flex items-center gap-1.5 text-sm font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-full px-3 h-8 transition-colors"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {t('merchant.filter')}
-                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${showFilters ? 'rotate-180' : ''}`} />
-              </button>
-
-              {/* Desktop: filters always visible */}
-              <form onSubmit={handleSearch} className="hidden sm:flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                  <Input
-                    placeholder={t('merchant.searchPlaceholder')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9 rounded-full h-10 w-64"
-                  />
+          {/* Mobile stats grid */}
+          <div className="bg-[#1a1919] rounded-2xl border border-[#494847]/10 overflow-hidden">
+            <div className="grid grid-cols-3 divide-x divide-[#494847]/10">
+              <div className="p-6 flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-[#69f6b8]/10 flex items-center justify-center mb-4">
+                  <ScanLine className="w-5 h-5 text-[#69f6b8]" />
                 </div>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                  <Input
-                    type="date"
-                    value={dateFilter}
-                    onChange={(e) => { setDateFilter(e.target.value); setPage(1) }}
-                    className="pl-9 rounded-full h-10 w-48"
-                  />
+                <p className="text-2xl font-bold tracking-tight">{stats.totalScans}</p>
+                <p className="text-[10px] uppercase tracking-widest text-[#adaaaa] font-semibold mt-0.5">{t('merchant.totalScans')}</p>
+              </div>
+              <div className="p-6 flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-[#ac8aff]/10 flex items-center justify-center mb-4">
+                  <Users className="w-5 h-5 text-[#ac8aff]" />
                 </div>
-                <Button type="submit" className="rounded-full h-10 px-6">{t('merchant.filter')}</Button>
-              </form>
+                <p className="text-2xl font-bold tracking-tight">{stats.uniqueUsers}</p>
+                <p className="text-[10px] uppercase tracking-widest text-[#adaaaa] font-semibold mt-0.5">{t('merchant.uniqueUsers')}</p>
+              </div>
+              <div className="p-6 flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center mb-4">
+                  <Gift className="w-5 h-5 text-[#adaaaa]" />
+                </div>
+                <p className="text-2xl font-bold tracking-tight">{stats.totalRewards || 0}</p>
+                <p className="text-[10px] uppercase tracking-widest text-[#adaaaa] font-semibold mt-0.5">{t('merchant.rewardsRedeemed')}</p>
+              </div>
             </div>
+          </div>
+        </div>
 
-            {/* Mobile: collapsible filters */}
-            <AnimatePresence initial={false}>
-              {showFilters && (
-                <motion.form
-                  key="mobile-filters"
-                  onSubmit={handleSearch}
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  className="sm:hidden overflow-hidden flex flex-col gap-3 pt-4"
-                >
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                    <Input
-                      placeholder={t('merchant.searchPlaceholder')}
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9 rounded-full h-10 w-full"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                    <Input
-                      type="date"
-                      value={dateFilter}
-                      onChange={(e) => { setDateFilter(e.target.value); setPage(1) }}
-                      className="pl-9 rounded-full h-10 w-full"
-                    />
-                  </div>
-                  <Button type="submit" className="rounded-full h-10 px-6 w-full">{t('merchant.filter')}</Button>
-                </motion.form>
-              )}
-            </AnimatePresence>
+        {/* Desktop: side-by-side QR card + 3 stat cards */}
+        <div className="hidden lg:grid grid-cols-12 gap-8 items-start">
+          {/* QR card */}
+          <button
+            onClick={() => router.push('/merchant/display-qr')}
+            className="col-span-4 group relative overflow-hidden h-[180px] bg-gradient-to-br from-[#69f6b8] to-[#06b77f] rounded-[2rem] p-8 flex flex-col justify-between items-start transition-all duration-300 hover:scale-[1.02] active:scale-95">
+            <div className="bg-black/10 p-3 rounded-2xl">
+              <QrCode className="w-8 h-8 text-[#002919]" />
+            </div>
+            <span className="text-[#002919] font-black text-xl tracking-tight">{t('merchant.showQrCode')}</span>
+          </button>
+
+          {/* 3 stat cards */}
+          <div className="col-span-8 grid grid-cols-3 gap-6 h-[180px]">
+            <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
+              <div className="flex justify-between items-start">
+                <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.totalScans')}</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black tracking-tighter">{stats.totalScans}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#69f6b8] mb-2" />
+              </div>
+            </div>
+            <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
+              <div className="flex justify-between items-start">
+                <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.uniqueUsers')}</span>
+              </div>
+              <span className="text-5xl font-black tracking-tighter">{stats.uniqueUsers}</span>
+            </div>
+            <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
+              <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.rewardsRedeemed')}</span>
+              <span className={`text-5xl font-black tracking-tighter ${!stats.totalRewards ? 'opacity-30' : ''}`}>
+                {stats.totalRewards || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Recent scans ────────────────────────────────────────────── */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl lg:text-2xl font-bold tracking-tight">{t('merchant.recentScans')}</h2>
+            <Link href="/merchant"
+              className="group flex items-center gap-1.5 text-sm font-medium text-[#69f6b8] hover:text-white transition-colors">
+              Voir tout
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-zinc-50/50 hover:bg-zinc-50/50">
-                  <TableHead className="font-semibold text-zinc-900">{t('merchant.dateAndTime')}</TableHead>
-                  <TableHead className="font-semibold text-zinc-900">{t('merchant.customer')}</TableHead>
-                  <TableHead className="font-semibold text-zinc-900">{t('merchant.type')}</TableHead>
-                  <TableHead className="font-semibold text-zinc-900">{t('merchant.device')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          {/* Table */}
+          <div className="bg-[#1a1919] rounded-2xl lg:rounded-[2rem] overflow-hidden overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#201f1f]/50">
+                  <th className="px-6 py-4 lg:px-8 lg:py-6 text-xs font-black uppercase tracking-widest text-[#adaaaa]">{t('merchant.dateAndTime')}</th>
+                  <th className="px-6 py-4 lg:px-8 lg:py-6 text-xs font-black uppercase tracking-widest text-[#adaaaa]">{t('merchant.customer')}</th>
+                  <th className="px-6 py-4 lg:px-8 lg:py-6 text-xs font-black uppercase tracking-widest text-[#adaaaa]">{t('merchant.type')}</th>
+                  <th className="px-6 py-4 lg:px-8 lg:py-6 text-xs font-black uppercase tracking-widest text-[#adaaaa]">{t('merchant.device')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
                 {loadingTable ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-zinc-400 mx-auto" />
-                    </TableCell>
-                  </TableRow>
+                  <tr>
+                    <td colSpan={4} className="h-32 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#adaaaa] mx-auto" />
+                    </td>
+                  </tr>
                 ) : scans.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-32 text-center text-zinc-500">
+                  <tr>
+                    <td colSpan={4} className="h-32 text-center text-[#adaaaa]">
                       {t('merchant.noScans')}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   scans.map((scan) => (
-                    <TableRow key={scan.id}>
-                      <TableCell className="text-zinc-600 whitespace-nowrap">
+                    <tr key={scan.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-4 lg:px-8 lg:py-5 whitespace-nowrap text-sm font-medium text-white">
                         {new Date(scan.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="font-medium text-zinc-900">
+                      </td>
+                      <td className="px-6 py-4 lg:px-8 lg:py-5 text-white">
                         {scan.email ? (
                           scan.email
                         ) : (
-                          <span className="text-zinc-500 font-mono text-xs" title={scan.user_id}>
+                          <span className="font-mono text-xs text-[#adaaaa]" title={scan.user_id}>
                             {scan.user_id.substring(0, 8)}...{scan.user_id.substring(scan.user_id.length - 4)}
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4 lg:px-8 lg:py-5">
                         {scan.is_anonymous ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800">
+                          <span className="px-3 py-1 rounded-full bg-[#262626] text-[#adaaaa] text-[10px] font-bold uppercase tracking-wider">
                             {t('merchant.anonymous')}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="px-3 py-1 rounded-full bg-[#69f6b8]/10 text-[#69f6b8] text-[10px] font-bold uppercase tracking-wider">
                             {t('merchant.registered')}
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-zinc-500 text-xs whitespace-nowrap">
+                      </td>
+                      <td className="px-6 py-4 lg:px-8 lg:py-5 text-[#adaaaa] text-sm whitespace-nowrap">
                         {scan.device_type || '—'}
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              </tbody>
+            </table>
 
-          {!loadingTable && totalPages > 1 && (
-            <div className="p-4 border-t border-zinc-100 flex items-center justify-between">
-              <p className="text-sm text-zinc-500">
-                {t('merchant.showing')} <span className="font-medium text-zinc-900">{(page - 1) * limit + 1}</span> {t('merchant.to')} <span className="font-medium text-zinc-900">{Math.min(page * limit, totalScans)}</span> {t('merchant.of')} <span className="font-medium text-zinc-900">{totalScans}</span> {t('merchant.results')}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-full h-9 px-4"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  {t('merchant.previous')}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-full h-9 px-4"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  {t('merchant.next')}
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+            {/* Pagination */}
+            {!loadingTable && totalPages > 1 && (
+              <div className="px-6 py-4 lg:px-8 border-t border-white/5 flex items-center justify-between">
+                <p className="text-sm text-[#adaaaa]">
+                  {t('merchant.showing')}{' '}
+                  <span className="font-medium text-white">{(page - 1) * limit + 1}</span>{' '}
+                  {t('merchant.to')}{' '}
+                  <span className="font-medium text-white">{Math.min(page * limit, totalScans)}</span>{' '}
+                  {t('merchant.of')}{' '}
+                  <span className="font-medium text-white">{totalScans}</span>{' '}
+                  {t('merchant.results')}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                    className="h-9 px-4 rounded-full bg-[#1a1919] border border-[#494847]/20 text-sm text-[#adaaaa] hover:text-white hover:border-[#494847]/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1">
+                    <ChevronLeft className="h-4 w-4" />{t('merchant.previous')}
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                    className="h-9 px-4 rounded-full bg-[#1a1919] border border-[#494847]/20 text-sm text-[#adaaaa] hover:text-white hover:border-[#494847]/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1">
+                    {t('merchant.next')}<ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </main>
+            )}
+          </div>
+        </section>
 
-      <footer className="border-t border-zinc-200 bg-white mt-auto">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between text-sm text-zinc-400">
-          <span>© {new Date().getFullYear()} Trelio. All rights reserved.</span>
-          <Link href="/" className="hover:text-zinc-900 transition-colors flex items-center gap-1.5">
-            <Globe className="h-3.5 w-3.5" />
-            trelio.app
-          </Link>
+        {/* ── Promotional banner ───────────────────────────────────────── */}
+        <section className="relative h-64 rounded-[2.5rem] overflow-hidden flex items-center px-10 lg:px-12 group cursor-pointer">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#69f6b8]/10 via-transparent to-[#ac8aff]/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0e0e0e] via-[#0e0e0e]/80 to-transparent" />
+          <div className="absolute inset-0 bg-[#1a1919]" style={{ zIndex: -1 }} />
+          <div className="relative z-10 max-w-lg">
+            <span className="inline-block px-4 py-1.5 bg-[#ac8aff]/20 text-[#ac8aff] rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-[#ac8aff]/20">
+              <Sparkles className="w-3 h-3 inline mr-1.5 -mt-0.5" />
+              Insight Mensuel
+            </span>
+            <h4 className="text-2xl lg:text-3xl font-black tracking-tight leading-tight mb-4">
+              Augmentez votre rétention client de 24% ce mois-ci.
+            </h4>
+            <button className="px-8 py-3 bg-white text-[#0e0e0e] font-bold rounded-full hover:scale-105 active:scale-95 transition-transform text-sm">
+              Découvrir comment
+            </button>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between text-xs text-[#494847] pt-4 border-t border-[#494847]/10">
+          <span>© {new Date().getFullYear()} Trelio.</span>
+          <Link href="/" className="hover:text-[#adaaaa] transition-colors">trelio.app</Link>
         </div>
-      </footer>
+
+      </main>
     </div>
   )
 }
