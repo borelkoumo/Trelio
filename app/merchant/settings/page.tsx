@@ -2,14 +2,16 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import {
+  Loader2, Settings, Menu,
+  Zap, UserCheck, Store, Trophy, ShieldCheck,
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
-import { MerchantHeader } from '@/components/merchant-header'
+import { MerchantNav } from '@/components/merchant-nav'
 
 interface MerchantInfo {
   id: string
@@ -20,42 +22,53 @@ interface MerchantInfo {
   validation_mode: 'automatic' | 'manual'
 }
 
+type Tab = 'boutique' | 'programme' | 'validation'
+
+const TABS: { key: Tab; label: string; icon: React.ElementType; color: string }[] = [
+  { key: 'boutique',   label: 'Boutique',   icon: Store,       color: '#69f6b8' },
+  { key: 'programme',  label: 'Programme',  icon: Trophy,      color: '#ac8aff' },
+  { key: 'validation', label: 'Validation', icon: ShieldCheck, color: '#77e6ff' },
+]
+
 export default function MerchantSettings() {
-  const [loading, setLoading] = useState(true)
-  const [merchant, setMerchant] = useState<MerchantInfo | null>(null)
-  const [saving, setSaving] = useState(false)
-  const router = useRouter()
+  const [loading, setLoading]       = useState(true)
+  const [merchant, setMerchant]     = useState<MerchantInfo | null>(null)
+  const [saved, setSaved]           = useState<MerchantInfo | null>(null)
+  const [saving, setSaving]         = useState(false)
+  const [activeTab, setActiveTab]   = useState<Tab>('boutique')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const router   = useRouter()
   const supabase = createClient()
-  const { t } = useLanguage()
+  const { t }    = useLanguage()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/merchant/login')
+  }
 
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/merchant/stats')
-      if (res.status === 401) {
-        router.push('/merchant/login')
-        return
-      }
+      if (res.status === 401) { router.push('/merchant/login'); return }
       const data = await res.json()
       if (res.ok) {
         setMerchant(data.merchant)
+        setSaved(data.merchant)
       } else {
         toast.error(t('merchant.failedLoad'), { description: data.error })
       }
-    } catch (error) {
+    } catch {
       toast.error(t('merchant.failedLoad'))
     } finally {
       setLoading(false)
     }
   }, [router, t])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  useEffect(() => { fetchData() }, [fetchData])
 
-  const handleSaveConfig = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSave = async () => {
     if (!merchant) return
-
     setSaving(true)
     try {
       const res = await fetch('/api/merchant/config', {
@@ -72,162 +85,317 @@ export default function MerchantSettings() {
       if (res.ok) {
         toast(t('merchant.configSaved'))
         setMerchant(data.merchant)
+        setSaved(data.merchant)
       } else {
         toast.error(t('merchant.failedConfig'), { description: data.error })
       }
-    } catch (error) {
+    } catch {
       toast.error(t('merchant.failedConfig'))
     } finally {
       setSaving(false)
     }
   }
 
+  const handleDiscard = () => {
+    if (saved) setMerchant({ ...saved })
+  }
+
+  // ── Dirty detection ───────────────────────────────────────────────────────
+  const dirtyBoutique   = !!saved && merchant?.name !== saved.name
+  const dirtyProgramme  = !!saved && (
+    merchant?.reward_threshold !== saved.reward_threshold ||
+    merchant?.reward_description !== saved.reward_description
+  )
+  const dirtyValidation = !!saved && merchant?.validation_mode !== saved.validation_mode
+  const isDirty = dirtyBoutique || dirtyProgramme || dirtyValidation
+
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
       </div>
     )
   }
 
   if (!merchant) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">{t('merchant.failedData')}</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <p className="text-[#adaaaa]">{t('merchant.failedData')}</p>
       </div>
     )
   }
 
+  const tabDirty: Record<Tab, boolean> = {
+    boutique: dirtyBoutique,
+    programme: dirtyProgramme,
+    validation: dirtyValidation,
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-50 pb-12">
-      <MerchantHeader />
+    <div className="min-h-screen bg-[#0e0e0e] text-white font-sans">
 
-      <main className="max-w-3xl mx-auto px-6 mt-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 mb-2">{t('merchant.settings')}</h1>
-          <p className="text-zinc-500">{t('merchant.programConfig')}</p>
+      <MerchantNav
+        merchantName={merchant.name}
+        activePath="/merchant/settings"
+        onLogout={handleLogout}
+        drawerOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
+
+      {/* ── Main layout ──────────────────────────────────────────────────── */}
+      <div className="lg:pl-64 flex flex-col min-h-screen">
+
+        {/* ── Mobile top bar ────────────────────────────────────────────── */}
+        <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-5 h-14 bg-[#0e0e0e]/90 backdrop-blur-xl border-b border-[#494847]/10">
+          <button onClick={() => setDrawerOpen(true)}
+            className="text-[#adaaaa] hover:text-white p-2 -ml-2 rounded-full hover:bg-[#262626] transition-colors">
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-[#69f6b8]" />
+            <span className="text-sm font-bold tracking-tight">{t('merchant.settings')}</span>
+          </div>
+          <div className="w-9" />
+        </header>
+
+        {/* ── Desktop top bar ───────────────────────────────────────────── */}
+        <header className="hidden lg:flex items-center px-8 h-16 border-b border-[#494847]/10 bg-[#0e0e0e]/80 backdrop-blur-xl sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <Link href="/merchant" className="text-[#adaaaa] hover:text-white text-sm transition-colors">Dashboard</Link>
+            <span className="text-[#494847]">/</span>
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-[#69f6b8]" />
+              <span className="text-sm font-bold text-white">{t('merchant.settings')}</span>
+            </div>
+          </div>
+        </header>
+
+        {/* ── Tab bar — sticky below top bar ────────────────────────────── */}
+        <div className="sticky top-14 lg:top-16 z-20 bg-[#0e0e0e]/95 backdrop-blur-xl border-b border-[#494847]/10">
+          <div className="flex items-center px-5 lg:px-8 gap-1">
+            {TABS.map(({ key, label, icon: Icon, color }) => {
+              const isActive = activeTab === key
+              const dirty    = tabDirty[key]
+              return (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  className={`relative flex items-center gap-2 px-4 py-4 text-sm font-semibold transition-all duration-200 ${
+                    isActive ? 'text-white' : 'text-[#adaaaa] hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" style={{ color: isActive ? color : undefined }} />
+                  <span className="hidden sm:block">{label}</span>
+                  {dirty && (
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                  )}
+                  {/* Active underline */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="tab-underline"
+                      className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
+                      style={{ background: color }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        <div className="bg-white p-8 rounded-3xl border border-zinc-100 shadow-sm">
-          <form onSubmit={handleSaveConfig} className="space-y-6 max-w-sm mx-auto">
-            <div className="space-y-2">
-              <Label htmlFor="name">{t('merchant.storeName')}</Label>
-              <Input
-                id="name"
-                value={merchant.name}
-                onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
-                className="h-12 rounded-xl"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="threshold">{t('merchant.rewardThreshold')}</Label>
-              <Input
-                id="threshold"
-                type="number"
-                min="1"
-                value={merchant.reward_threshold}
-                onChange={(e) => setMerchant({ ...merchant, reward_threshold: Number(e.target.value) })}
-                className="h-12 rounded-xl"
-              />
-            </div>
+        {/* ── Page content ──────────────────────────────────────────────── */}
+        <main className="flex-1 pt-14 lg:pt-0 pb-32">
+          <div className="max-w-2xl px-5 lg:px-8 py-8 mx-auto">
 
-            <div className="space-y-2">
-              <Label htmlFor="description">{t('merchant.rewardDesc')}</Label>
-              <Input
-                id="description"
-                value={merchant.reward_description}
-                onChange={(e) => setMerchant({ ...merchant, reward_description: e.target.value })}
-                placeholder={t('merchant.egCoffee')}
-                className="h-12 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-zinc-100">
-              <div>
-                <Label className="text-base">{t('merchant.validationMode')}</Label>
-                <p className="text-sm text-zinc-500">{t('merchant.validationModeDesc')}</p>
+            {/* ── Tab: Boutique ─────────────────────────────────────── */}
+            {activeTab === 'boutique' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight">Boutique</h2>
+                  <p className="text-sm text-[#adaaaa] mt-1">Informations principales de votre établissement.</p>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="name" className="text-[10px] font-bold uppercase tracking-widest text-[#adaaaa] px-1">
+                    {t('merchant.storeName')}
+                  </label>
+                  <input
+                    id="name"
+                    value={merchant.name}
+                    onChange={(e) => setMerchant({ ...merchant, name: e.target.value })}
+                    className="w-full h-14 bg-[#131313] rounded-xl px-4 text-sm text-white placeholder:text-[#777575] border border-[#494847]/30 focus:border-[#69f6b8] focus:outline-none transition-colors"
+                  />
+                </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label
-                  className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none ${
+            )}
+
+            {/* ── Tab: Programme ────────────────────────────────────── */}
+            {activeTab === 'programme' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight">Programme de fidélité</h2>
+                  <p className="text-sm text-[#adaaaa] mt-1">Configurez les règles d'attribution des récompenses.</p>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="threshold" className="text-[10px] font-bold uppercase tracking-widest text-[#adaaaa] px-1">
+                    {t('merchant.rewardThreshold')}
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="threshold"
+                      type="number"
+                      min="1"
+                      value={merchant.reward_threshold}
+                      onChange={(e) => setMerchant({ ...merchant, reward_threshold: Number(e.target.value) })}
+                      className="w-28 h-14 bg-[#131313] rounded-xl px-4 text-sm text-white placeholder:text-[#777575] border border-[#494847]/30 focus:border-[#69f6b8] focus:outline-none transition-colors tabular-nums"
+                    />
+                    <span className="text-sm text-[#adaaaa]">points = 1 récompense</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="description" className="text-[10px] font-bold uppercase tracking-widest text-[#adaaaa] px-1">
+                    {t('merchant.rewardDesc')}
+                  </label>
+                  <input
+                    id="description"
+                    value={merchant.reward_description}
+                    onChange={(e) => setMerchant({ ...merchant, reward_description: e.target.value })}
+                    placeholder={t('merchant.egCoffee')}
+                    className="w-full h-14 bg-[#131313] rounded-xl px-4 text-sm text-white placeholder:text-[#777575] border border-[#494847]/30 focus:border-[#69f6b8] focus:outline-none transition-colors"
+                  />
+                  <p className="text-[10px] text-[#494847] px-1">Ce texte s'affiche aux clients lors de la validation de leur récompense.</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── Tab: Validation ───────────────────────────────────── */}
+            {activeTab === 'validation' && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight">Mode de validation</h2>
+                  <p className="text-sm text-[#adaaaa] mt-1">{t('merchant.validationModeDesc')}</p>
+                </div>
+                <div className="space-y-3">
+                  {/* Automatic */}
+                  <label className={`flex items-start gap-4 p-5 rounded-2xl cursor-pointer transition-all duration-200 ${
                     merchant.validation_mode === 'automatic'
-                      ? 'border-zinc-900 ring-1 ring-zinc-900'
-                      : 'border-zinc-200'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="validation_mode"
-                    value="automatic"
-                    className="sr-only"
-                    checked={merchant.validation_mode === 'automatic'}
-                    onChange={(e) => setMerchant({ ...merchant, validation_mode: e.target.value as 'automatic' | 'manual' })}
-                  />
-                  <span className="flex flex-1">
-                    <span className="flex flex-col">
-                      <span className="block text-sm font-medium text-zinc-900">{t('merchant.modeAutomatic')}</span>
-                      <span className="mt-1 flex items-center text-sm text-zinc-500">{t('merchant.modeAutomaticDesc')}</span>
-                    </span>
-                  </span>
-                  <svg
-                    className={`h-5 w-5 ${merchant.validation_mode === 'automatic' ? 'text-zinc-900' : 'invisible'}`}
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
+                      ? 'bg-[#69f6b8]/8 ring-1 ring-[#69f6b8]/35'
+                      : 'bg-[#1a1919] hover:bg-[#1f1f1f]'
+                  }`}>
+                    <input type="radio" name="validation_mode" value="automatic" className="sr-only"
+                      checked={merchant.validation_mode === 'automatic'}
+                      onChange={() => setMerchant({ ...merchant, validation_mode: 'automatic' })}
                     />
-                  </svg>
-                </label>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                      merchant.validation_mode === 'automatic' ? 'bg-[#69f6b8]/20' : 'bg-[#262626]'
+                    }`}>
+                      <Zap className={`w-5 h-5 ${merchant.validation_mode === 'automatic' ? 'text-[#69f6b8]' : 'text-[#adaaaa]'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${merchant.validation_mode === 'automatic' ? 'text-[#69f6b8]' : 'text-white'}`}>
+                        {t('merchant.modeAutomatic')}
+                      </p>
+                      <p className="text-xs text-[#adaaaa] mt-1.5 leading-relaxed">{t('merchant.modeAutomaticDesc')}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                      merchant.validation_mode === 'automatic'
+                        ? 'border-[#69f6b8] bg-[#69f6b8]'
+                        : 'border-[#494847]'
+                    }`}>
+                      {merchant.validation_mode === 'automatic' && (
+                        <div className="w-2 h-2 rounded-full bg-[#0e0e0e]" />
+                      )}
+                    </div>
+                  </label>
 
-                <label
-                  className={`relative flex cursor-pointer rounded-xl border p-4 shadow-sm focus:outline-none ${
+                  {/* Manual */}
+                  <label className={`flex items-start gap-4 p-5 rounded-2xl cursor-pointer transition-all duration-200 ${
                     merchant.validation_mode === 'manual'
-                      ? 'border-zinc-900 ring-1 ring-zinc-900'
-                      : 'border-zinc-200'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="validation_mode"
-                    value="manual"
-                    className="sr-only"
-                    checked={merchant.validation_mode === 'manual'}
-                    onChange={(e) => setMerchant({ ...merchant, validation_mode: e.target.value as 'automatic' | 'manual' })}
-                  />
-                  <span className="flex flex-1">
-                    <span className="flex flex-col">
-                      <span className="block text-sm font-medium text-zinc-900">{t('merchant.modeManual')}</span>
-                      <span className="mt-1 flex items-center text-sm text-zinc-500">{t('merchant.modeManualDesc')}</span>
-                    </span>
-                  </span>
-                  <svg
-                    className={`h-5 w-5 ${merchant.validation_mode === 'manual' ? 'text-zinc-900' : 'invisible'}`}
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-                      clipRule="evenodd"
+                      ? 'bg-[#ac8aff]/8 ring-1 ring-[#ac8aff]/35'
+                      : 'bg-[#1a1919] hover:bg-[#1f1f1f]'
+                  }`}>
+                    <input type="radio" name="validation_mode" value="manual" className="sr-only"
+                      checked={merchant.validation_mode === 'manual'}
+                      onChange={() => setMerchant({ ...merchant, validation_mode: 'manual' })}
                     />
-                  </svg>
-                </label>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                      merchant.validation_mode === 'manual' ? 'bg-[#ac8aff]/20' : 'bg-[#262626]'
+                    }`}>
+                      <UserCheck className={`w-5 h-5 ${merchant.validation_mode === 'manual' ? 'text-[#ac8aff]' : 'text-[#adaaaa]'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${merchant.validation_mode === 'manual' ? 'text-[#ac8aff]' : 'text-white'}`}>
+                        {t('merchant.modeManual')}
+                      </p>
+                      <p className="text-xs text-[#adaaaa] mt-1.5 leading-relaxed">{t('merchant.modeManualDesc')}</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center transition-all ${
+                      merchant.validation_mode === 'manual'
+                        ? 'border-[#ac8aff] bg-[#ac8aff]'
+                        : 'border-[#494847]'
+                    }`}>
+                      {merchant.validation_mode === 'manual' && (
+                        <div className="w-2 h-2 rounded-full bg-[#0e0e0e]" />
+                      )}
+                    </div>
+                  </label>
+                </div>
               </div>
-            </div>
+            )}
 
-            <Button type="submit" disabled={saving} className="h-12 px-8 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 w-full">
-              {saving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-              {t('merchant.saveChanges')}
-            </Button>
-          </form>
-        </div>
-      </main>
+          </div>
+        </main>
+
+        {/* ── Floating save/cancel bar — slides up when dirty ──────────── */}
+        <AnimatePresence>
+          {isDirty && (
+            <motion.div
+              key="save-bar"
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+              className="fixed bottom-0 left-0 right-0 lg:left-64 z-50 px-5 lg:px-8 py-4"
+              style={{ background: 'linear-gradient(to top, rgba(14,14,14,1) 60%, transparent)' }}
+            >
+              <div className="max-w-2xl mx-auto flex items-center gap-3 p-4 rounded-2xl border border-[#494847]/20"
+                style={{ background: 'rgba(26,25,25,0.95)', backdropFilter: 'blur(24px)' }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-[#adaaaa] truncate">Modifications non sauvegardées</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {dirtyBoutique   && <span className="text-[9px] font-bold text-[#69f6b8] bg-[#69f6b8]/10 px-2 py-0.5 rounded-full">Boutique</span>}
+                    {dirtyProgramme  && <span className="text-[9px] font-bold text-[#ac8aff] bg-[#ac8aff]/10 px-2 py-0.5 rounded-full">Programme</span>}
+                    {dirtyValidation && <span className="text-[9px] font-bold text-[#77e6ff] bg-[#77e6ff]/10 px-2 py-0.5 rounded-full">Validation</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDiscard}
+                    className="h-10 px-4 rounded-xl text-sm font-semibold text-[#adaaaa] border border-[#494847]/40 hover:border-[#494847] hover:text-white transition-all duration-200"
+                  >
+                    Abandonner
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="h-10 px-5 rounded-xl text-sm font-bold text-[#002919] flex items-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60"
+                    style={{ background: 'linear-gradient(135deg, #69f6b8, #06b77f)' }}
+                  >
+                    {saving
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : t('merchant.saveChanges')
+                    }
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      </div>
     </div>
   )
 }

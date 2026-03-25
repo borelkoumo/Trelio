@@ -7,11 +7,11 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   Loader2, QrCode, Search, Calendar, ChevronLeft, ChevronRight,
-  SlidersHorizontal, ChevronDown, LogOut, Settings, Code, X, Menu,
-  LayoutDashboard, ScanLine, Users, Gift, Sparkles,
+  SlidersHorizontal, ChevronDown, Menu,
+  ScanLine, Users, Gift, Sparkles,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
+import { MerchantNav } from '@/components/merchant-nav'
 
 interface MerchantStats {
   totalScans: number
@@ -35,15 +35,6 @@ interface Scan {
   device_type: string | null
 }
 
-// ── Sidebar nav items ───────────────────────────────────────────────────────
-const NAV = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/merchant',             active: true  },
-  { icon: ScanLine,        label: 'Scans',     href: '/merchant/scans',       active: false },
-  { icon: QrCode,          label: 'Mon QR',    href: '/merchant/display-qr',  active: false },
-  { icon: Users,           label: 'Clients',   href: '/merchant',             active: false },
-  { icon: Gift,            label: 'Rewards',   href: '/merchant',             active: false },
-  { icon: Settings,        label: 'Settings',  href: '/merchant/settings',    active: false },
-]
 
 export default function MerchantDashboard() {
   const [loading, setLoading]           = useState(true)
@@ -143,101 +134,14 @@ export default function MerchantDashboard() {
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white font-sans">
 
-      {/* ── Mobile drawer overlay ────────────────────────────────────── */}
-      <AnimatePresence>
-        {drawerOpen && (
-          <motion.div
-            key="overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 z-[55] lg:hidden"
-            onClick={() => setDrawerOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Mobile drawer ────────────────────────────────────────────── */}
-      <aside className={`fixed inset-y-0 left-0 z-[60] w-[280px] bg-[#0e0e0e] rounded-r-2xl shadow-2xl flex flex-col gap-2 p-4 transition-transform duration-300 ease-in-out lg:hidden ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        {/* Profile */}
-        <div className="flex items-center gap-4 p-4 mb-4">
-          <div className="w-12 h-12 rounded-full bg-[#1a1919] flex items-center justify-center text-[#69f6b8] font-black text-lg shrink-0">
-            {merchant.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="overflow-hidden">
-            <h3 className="text-sm font-bold text-[#69f6b8] truncate">{merchant.name}</h3>
-            <p className="text-xs text-[#adaaaa]">Commerçant</p>
-          </div>
-          <button className="ml-auto p-1 text-[#adaaaa] hover:text-white" onClick={() => setDrawerOpen(false)}>
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex flex-col gap-1">
-          {NAV.map(({ icon: Icon, label, href, active }) => (
-            <Link key={label} href={href}
-              onClick={() => setDrawerOpen(false)}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium transition-all active:translate-x-1 duration-150 ${active ? 'bg-[#69f6b8]/10 text-[#69f6b8]' : 'text-[#adaaaa] hover:bg-[#262626] hover:text-white'}`}>
-              <Icon className="w-5 h-5" />
-              {label}
-            </Link>
-          ))}
-          <Link href="/merchant/integration"
-            onClick={() => setDrawerOpen(false)}
-            className="flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-[#adaaaa] hover:bg-[#262626] hover:text-white transition-all duration-150">
-            <Code className="w-5 h-5" />
-            {t('merchant.integration')}
-          </Link>
-        </nav>
-
-        {/* Logout */}
-        <button onClick={handleLogout}
-          className="mt-auto flex items-center gap-4 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all">
-          <LogOut className="w-5 h-5" />
-          {t('merchant.logout')}
-        </button>
-      </aside>
-
-      {/* ── Desktop sidebar ───────────────────────────────────────────── */}
-      <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 z-50 p-4 border-r border-[#494847]/15"
-        style={{ background: 'rgba(5,5,5,0.8)', backdropFilter: 'blur(20px)' }}>
-        {/* Logo */}
-        <div className="mb-10 px-4">
-          <h1 className="text-2xl font-black text-[#69f6b8] tracking-tighter">Trelio</h1>
-          <p className="text-[10px] text-[#adaaaa] tracking-widest uppercase mt-1 font-bold">Merchant Portal</p>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 space-y-1">
-          {NAV.map(({ icon: Icon, label, href, active }) => (
-            <Link key={label} href={href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${active ? 'text-[#69f6b8] bg-[#1a1919] font-bold' : 'text-[#adaaaa] hover:text-white hover:bg-[#1a1919]/50'}`}>
-              <Icon className="w-5 h-5" />
-              {label}
-            </Link>
-          ))}
-          <Link href="/merchant/integration"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[#adaaaa] hover:text-white hover:bg-[#1a1919]/50 transition-all duration-200">
-            <Code className="w-5 h-5" />
-            {t('merchant.integration')}
-          </Link>
-        </nav>
-
-        {/* Merchant card */}
-        <div className="mt-auto p-4 bg-[#1a1919] rounded-2xl flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-[#69f6b8] font-black shrink-0">
-            {merchant.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="overflow-hidden flex-1">
-            <p className="text-xs font-bold truncate">{merchant.name}</p>
-            <p className="text-[10px] text-[#adaaaa] truncate">Code: {merchant.code}</p>
-          </div>
-          <button onClick={handleLogout} title={t('merchant.logout')}
-            className="text-[#adaaaa] hover:text-red-400 transition-colors p-1">
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </aside>
+      <MerchantNav
+        merchantName={merchant.name}
+        merchantCode={merchant.code}
+        activePath="/merchant"
+        onLogout={handleLogout}
+        drawerOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       {/* ── Mobile top header ─────────────────────────────────────────── */}
       <header className="lg:hidden fixed top-0 w-full z-50 h-16 flex items-center justify-between px-6 shadow-[0_48px_48px_rgba(172,138,255,0.04)]"
