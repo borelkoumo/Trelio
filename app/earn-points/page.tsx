@@ -2,16 +2,15 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Loader2, CheckCircle2, Gift, History, ShieldAlert, X } from 'lucide-react'
+import { Loader2, CheckCircle2, Gift, History, ShieldAlert, X, QrCode } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { useLanguage } from '@/components/language-provider'
 import { createClient } from '@/lib/supabase/client'
 import { ScanLanding } from './_components/ScanLanding'
 import { LinkAccountDialog } from './_components/LinkAccountDialog'
 import { QrExpiredDialog } from './_components/QrExpiredDialog'
+import { useShortUserId, UserIdBadge } from './_components/UserIdBadge'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +66,7 @@ function EarnPointsContent() {
 function EarnPointsWithQR({ qrData }: { qrData: string }) {
   const { t } = useLanguage()
   const supabase = createClient()
+  const shortId = useShortUserId()
 
   // Core state
   const [loading, setLoading] = useState(true)
@@ -226,8 +226,8 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
       </div>
     )
   }
@@ -238,12 +238,12 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
 
   if (error || !merchant) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 p-6 text-center">
-        <div className="rounded-full bg-red-100 p-4 mb-4">
-          <CheckCircle2 className="h-8 w-8 text-red-600" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0e0e0e] p-6 text-center">
+        <div className="rounded-full bg-[#1a1919] p-4 mb-4">
+          <CheckCircle2 className="h-8 w-8 text-[#ff716c]" />
         </div>
-        <h1 className="text-2xl font-bold text-zinc-900 mb-2">{t('earn.oops')}</h1>
-        <p className="text-zinc-600">{error || t('earn.wrong')}</p>
+        <h1 className="text-2xl font-bold text-white mb-2">{t('earn.oops')}</h1>
+        <p className="text-[#adaaaa]">{error || t('earn.wrong')}</p>
       </div>
     )
   }
@@ -253,7 +253,10 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans">
+    <div className="min-h-screen bg-[#0e0e0e] font-sans text-white">
+
+      {/* Bottom fade decoration */}
+      <div className="fixed bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#0e0e0e] to-transparent pointer-events-none z-10" />
 
       {/* Close-tab button — appears after earning */}
       <AnimatePresence>
@@ -266,102 +269,151 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
             transition={{ duration: 0.15 }}
             onClick={() => window.close()}
             aria-label={t('earn.closeTab')}
-            className="fixed top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-white transition-colors"
+            className="fixed top-4 right-4 z-50 h-9 w-9 rounded-full bg-[#1a1919]/90 backdrop-blur-sm border border-[#494847]/30 flex items-center justify-center text-[#adaaaa] hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
           </motion.button>
         )}
       </AnimatePresence>
 
-      <main className="flex-1 px-6 pt-6 pb-10 flex flex-col items-center max-w-md mx-auto w-full">
+      <main className="pt-12 pb-16 px-6 max-w-md mx-auto">
 
-        {/* Main card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-white rounded-3xl shadow-sm border border-zinc-100 p-8 flex flex-col items-center text-center relative overflow-hidden"
-        >
-          {/* Success flash */}
-          <AnimatePresence>
-            {successAnim && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.5 }}
-                className="absolute inset-0 bg-emerald-500 z-10 flex items-center justify-center"
-              >
-                <CheckCircle2 className="h-24 w-24 text-white" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Merchant identity */}
-          <div className="h-16 w-16 bg-zinc-100 rounded-2xl flex items-center justify-center mb-6">
-            <span className="text-2xl font-bold text-zinc-900">{merchant.name.charAt(0)}</span>
-          </div>
-          <h1 className="text-2xl font-bold text-zinc-900 mb-1">{merchant.name}</h1>
-          <p className="text-zinc-500 text-sm mb-8">{t('earn.digitalCard')}</p>
-
-          {/* Progress */}
-          {progress && (
-            <div className="w-full mb-8">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-4xl font-bold text-zinc-900">{progress.points}</span>
-                <span className="text-zinc-500 font-medium">/ {merchant.reward_threshold}</span>
-              </div>
-              <Progress value={(progress.points / merchant.reward_threshold) * 100} className="h-3 bg-zinc-100" />
-              <p className="text-sm text-zinc-500 mt-3 flex items-center justify-center gap-1.5">
-                <Gift className="h-4 w-4" /> {merchant.reward_description}
-              </p>
-            </div>
+        {/* Success flash */}
+        <AnimatePresence>
+          {successAnim && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.5 }}
+              className="fixed inset-0 bg-[#69f6b8] z-50 flex items-center justify-center"
+            >
+              <CheckCircle2 className="h-24 w-24 text-[#002919]" />
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Action area */}
+        {/* Merchant Identity */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-10 text-center"
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1a1919] mb-4 shadow-lg border border-[#494847]/10">
+            <span className="text-2xl font-black text-[#69f6b8]">{merchant.name.charAt(0)}</span>
+          </div>
+          <p className="text-[#ac8aff] font-medium tracking-wider text-[10px] mb-1 uppercase">Vous êtes chez</p>
+          <h1 className="font-black tracking-tight text-white text-2xl mb-3">{merchant.name}</h1>
+          <UserIdBadge shortId={shortId} />
+        </motion.section>
+
+        {/* Progress Bento Card */}
+        {progress && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="bg-[#1a1919] rounded-xl p-8 mb-8 relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
+          >
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#69f6b8]/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex justify-between items-end mb-6">
+                <div>
+                  <span className="text-[#adaaaa] text-sm font-medium">Votre progression</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-5xl font-black text-white">{progress.points}</span>
+                    <span className="text-xl font-bold text-[#adaaaa]">/ {merchant.reward_threshold}</span>
+                  </div>
+                </div>
+                <Gift className="text-[#69f6b8] w-8 h-8" />
+              </div>
+              {/* Gradient progress bar */}
+              <div className="w-full h-3 bg-[#262626] rounded-full mb-6 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#69f6b8] to-[#06b77f] rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min((progress.points / merchant.reward_threshold) * 100, 100)}%` }}
+                />
+              </div>
+              {/* Reward info row */}
+              <div className="flex items-center gap-3 p-4 bg-[#201f1f] rounded-xl">
+                <div className="w-10 h-10 flex items-center justify-center bg-[#69f6b8]/10 rounded-full shrink-0">
+                  <Gift className="text-[#69f6b8] w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-[#adaaaa] leading-none mb-1">Prochain avantage</p>
+                  <p className="text-base font-bold text-white">{merchant.reward_description}</p>
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
+        {/* Action area */}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mb-12 text-center"
+        >
           {progress?.rewardUnlocked ? (
             <RewardUnlocked />
           ) : pendingValidation ? (
-            <PendingValidation />
+            <PendingValidation shortId={shortId} />
           ) : showSaveCta ? (
             <SaveCtaButton onClick={() => setShowLinkDialog(true)} />
           ) : (
-            <Button
-              onClick={handleAddPoint}
-              disabled={validateButtonDisabled}
-              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-full h-14 text-lg font-medium shadow-md transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {addingPoint ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : isCooldown ? (
-                t('earn.cooldown')
-              ) : qrExpired ? (
-                t('earn.qrExpired')
-              ) : (
-                t('earn.validate')
-              )}
-            </Button>
+            <>
+              <p className="text-[#adaaaa] text-xs mb-4 font-medium">
+                {isCooldown
+                  ? t('earn.cooldown')
+                  : qrExpired
+                  ? t('earn.qrExpired')
+                  : 'Validez votre achat pour gagner un point de fidélité'}
+              </p>
+              <button
+                onClick={handleAddPoint}
+                disabled={validateButtonDisabled}
+                className="w-full py-5 px-6 rounded-full bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-black text-lg shadow-[0_12px_32px_-8px_rgba(105,246,184,0.3)] active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+              >
+                {addingPoint ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <QrCode className="h-5 w-5" />
+                    {t('earn.validate')}
+                  </>
+                )}
+              </button>
+            </>
           )}
-        </motion.div>
+        </motion.section>
 
         {/* Education banner */}
         {showSaveCta && <EducationBanner />}
 
-        {/* Recent scans */}
+        {/* Recent activity */}
         {progress?.history && progress.history.length > 0 && (
-          <div className="w-full mt-8">
-            <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <History className="h-4 w-4" /> {t('earn.recent')}
-            </h3>
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+                <History className="h-5 w-5 text-[#adaaaa]" /> {t('earn.recent')}
+              </h2>
+            </div>
             <div className="space-y-3">
               {progress.history.slice(0, 5).map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-xl border border-zinc-100 flex justify-between items-center shadow-sm">
-                  <span className="font-medium text-zinc-900">{t('earn.plusOne')}</span>
-                  <span className="text-sm text-zinc-500">
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl bg-[#131313]">
+                  <p className="text-[#adaaaa] text-sm">
                     {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  </p>
+                  <span className="text-[#69f6b8] font-black">+1pt</span>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.section>
         )}
       </main>
 
@@ -385,22 +437,25 @@ function EarnPointsWithQR({ qrData }: { qrData: string }) {
 
 function EarnedView() {
   const { t } = useLanguage()
-  const [merchant, setMerchant] = useState<MerchantInfo | null>(null)
+  const shortId = useShortUserId()
+  // Lazy init from sessionStorage avoids setState inside effect body
+  const [merchant] = useState<MerchantInfo | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const stored = sessionStorage.getItem('earned_merchant')
+      return stored ? (JSON.parse(stored) as MerchantInfo) : null
+    } catch { return null }
+  })
   const [progress, setProgress] = useState<ProgressInfo | null>(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('earned_merchant')
-    if (!stored) return
-    try {
-      const m: MerchantInfo = JSON.parse(stored)
-      setMerchant(m)
-      fetch(`/api/user/progress?merchant_id=${m.id}`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data) setProgress(data) })
-        .catch(() => {})
-    } catch { /* corrupted storage — fall through to ScanLanding */ }
-  }, [])
+    if (!merchant) return
+    fetch(`/api/user/progress?merchant_id=${merchant.id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setProgress(data) })
+      .catch(() => {})
+  }, [merchant])
 
   // No stored merchant (e.g. new tab opened with ?earned=1) — fall back to landing
   if (merchant === null && typeof window !== 'undefined' && !sessionStorage.getItem('earned_merchant')) {
@@ -409,8 +464,8 @@ function EarnedView() {
 
   if (!merchant) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
       </div>
     )
   }
@@ -421,67 +476,109 @@ function EarnedView() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 font-sans">
+    <div className="min-h-screen bg-[#0e0e0e] font-sans text-white">
 
-      {/* Close button */}
+      <div className="fixed bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#0e0e0e] to-transparent pointer-events-none z-10" />
+
       <motion.button
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.15 }}
         onClick={handleClose}
         aria-label={t('earn.closeTab')}
-        className="fixed top-4 right-4 z-50 h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-white transition-colors cursor-pointer"
+        className="fixed top-4 right-4 z-50 h-9 w-9 rounded-full bg-[#1a1919]/90 backdrop-blur-sm border border-[#494847]/30 flex items-center justify-center text-[#adaaaa] hover:text-white transition-colors cursor-pointer"
       >
         <X className="h-4 w-4" />
       </motion.button>
 
-      <main className="flex-1 px-6 pt-6 pb-10 flex flex-col items-center max-w-md mx-auto w-full">
+      <main className="pt-12 pb-16 px-6 max-w-md mx-auto">
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full bg-white rounded-3xl shadow-sm border border-zinc-100 p-8 flex flex-col items-center text-center"
+          transition={{ duration: 0.3 }}
+          className="mb-10 text-center"
         >
-          <div className="h-16 w-16 bg-zinc-100 rounded-2xl flex items-center justify-center mb-6">
-            <span className="text-2xl font-bold text-zinc-900">{merchant.name.charAt(0)}</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1a1919] mb-4 shadow-lg border border-[#494847]/10">
+            <span className="text-2xl font-black text-[#69f6b8]">{merchant.name.charAt(0)}</span>
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900 mb-1">{merchant.name}</h1>
-          <p className="text-zinc-500 text-sm mb-8">{t('earn.digitalCard')}</p>
+          <p className="text-[#ac8aff] font-medium tracking-wider text-[10px] mb-1 uppercase">Vous êtes chez</p>
+          <h1 className="font-black tracking-tight text-white text-2xl mb-3">{merchant.name}</h1>
+          <UserIdBadge shortId={shortId} />
+        </motion.section>
 
-          {progress && (
-            <div className="w-full mb-8">
-              <div className="flex justify-between items-end mb-2">
-                <span className="text-4xl font-bold text-zinc-900">{progress.points}</span>
-                <span className="text-zinc-500 font-medium">/ {merchant.reward_threshold}</span>
+        {progress && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            className="bg-[#1a1919] rounded-xl p-8 mb-8 relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
+          >
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#69f6b8]/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex justify-between items-end mb-6">
+                <div>
+                  <span className="text-[#adaaaa] text-sm font-medium">Votre progression</span>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-5xl font-black text-white">{progress.points}</span>
+                    <span className="text-xl font-bold text-[#adaaaa]">/ {merchant.reward_threshold}</span>
+                  </div>
+                </div>
+                <Gift className="text-[#69f6b8] w-8 h-8" />
               </div>
-              <Progress value={(progress.points / merchant.reward_threshold) * 100} className="h-3 bg-zinc-100" />
-              <p className="text-sm text-zinc-500 mt-3 flex items-center justify-center gap-1.5">
-                <Gift className="h-4 w-4" /> {merchant.reward_description}
-              </p>
+              <div className="w-full h-3 bg-[#262626] rounded-full mb-6 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#69f6b8] to-[#06b77f] rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min((progress.points / merchant.reward_threshold) * 100, 100)}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-[#201f1f] rounded-xl">
+                <div className="w-10 h-10 flex items-center justify-center bg-[#69f6b8]/10 rounded-full shrink-0">
+                  <Gift className="text-[#69f6b8] w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-[#adaaaa] leading-none mb-1">Prochain avantage</p>
+                  <p className="text-base font-bold text-white">{merchant.reward_description}</p>
+                </div>
+              </div>
             </div>
-          )}
+          </motion.section>
+        )}
 
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mb-12 text-center"
+        >
           <SaveCtaButton onClick={() => setShowLinkDialog(true)} />
-        </motion.div>
+        </motion.section>
 
         <EducationBanner />
 
         {progress?.history && progress.history.length > 0 && (
-          <div className="w-full mt-8">
-            <h3 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <History className="h-4 w-4" /> {t('earn.recent')}
-            </h3>
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="mt-8"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold tracking-tight flex items-center gap-2">
+                <History className="h-5 w-5 text-[#adaaaa]" /> {t('earn.recent')}
+              </h2>
+            </div>
             <div className="space-y-3">
               {progress.history.slice(0, 5).map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-xl border border-zinc-100 flex justify-between items-center shadow-sm">
-                  <span className="font-medium text-zinc-900">{t('earn.plusOne')}</span>
-                  <span className="text-sm text-zinc-500">
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl bg-[#131313]">
+                  <p className="text-[#adaaaa] text-sm">
                     {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  </p>
+                  <span className="text-[#69f6b8] font-black">+1pt</span>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.section>
         )}
       </main>
 
@@ -501,23 +598,31 @@ function EarnedView() {
 function RewardUnlocked() {
   const { t } = useLanguage()
   return (
-    <div className="w-full bg-emerald-50 border border-emerald-100 rounded-2xl p-6 mb-6">
-      <h3 className="text-emerald-800 font-bold text-lg mb-2">{t('earn.rewardUnlocked')}</h3>
-      <p className="text-emerald-600 text-sm mb-4">{t('earn.showScreen')}</p>
-      <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full h-12 text-lg font-medium">
+    <div className="w-full bg-[#69f6b8]/10 border border-[#69f6b8]/20 rounded-2xl p-6 mb-6">
+      <h3 className="text-[#69f6b8] font-bold text-lg mb-2">{t('earn.rewardUnlocked')}</h3>
+      <p className="text-[#adaaaa] text-sm mb-4">{t('earn.showScreen')}</p>
+      <button className="w-full py-4 rounded-full bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-black text-lg active:scale-95 transition-all">
         {t('earn.redeem')}
-      </Button>
+      </button>
     </div>
   )
 }
 
-function PendingValidation() {
+function PendingValidation({ shortId }: { shortId: string | null }) {
   const { t } = useLanguage()
   return (
-    <div className="w-full bg-amber-50 border border-amber-100 rounded-2xl p-6 mb-6 flex flex-col items-center text-center">
-      <Loader2 className="h-8 w-8 animate-spin text-amber-600 mb-3" />
-      <h3 className="text-amber-800 font-bold text-lg mb-1">{t('earn.waitingValidation')}</h3>
-      <p className="text-amber-600 text-sm">{t('earn.askMerchant')}</p>
+    <div className="w-full bg-[#ac8aff]/10 border border-[#ac8aff]/20 rounded-2xl p-6 mb-6 flex flex-col items-center text-center gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-[#ac8aff]" />
+      <div>
+        <h3 className="text-[#ac8aff] font-bold text-lg mb-1">{t('earn.waitingValidation')}</h3>
+        <p className="text-[#adaaaa] text-sm">{t('earn.askMerchant')}</p>
+      </div>
+      {shortId && (
+        <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-[#ac8aff]/15 w-full">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#adaaaa]">Montrez ce code au commerçant</p>
+          <span className="font-mono text-3xl font-black text-[#ac8aff] tracking-[0.2em]">{shortId}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -526,16 +631,16 @@ function SaveCtaButton({ onClick }: { onClick: () => void }) {
   const { t } = useLanguage()
   return (
     <div className="w-full">
-      <p className="text-center mt-2 mb-4">
-        <span className="text-sm font-medium text-zinc-900">Sauvegarde tes points et gagne </span>
-        <span className="inline-block text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-semibold">+1 bonus</span>
+      <p className="text-center mb-4">
+        <span className="text-sm font-medium text-[#adaaaa]">Sauvegarde tes points et gagne </span>
+        <span className="inline-block text-xs bg-[#69f6b8]/10 text-[#69f6b8] px-3 py-1 rounded-full font-semibold border border-[#69f6b8]/20">+1 bonus</span>
       </p>
-      <Button
+      <button
         onClick={onClick}
-        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-full h-14 text-base font-semibold shadow-md active:scale-[0.98] transition-all"
+        className="w-full py-5 px-6 rounded-full bg-gradient-to-br from-[#69f6b8] to-[#06b77f] text-[#002919] font-black text-lg shadow-[0_12px_32px_-8px_rgba(105,246,184,0.3)] active:scale-95 transition-all duration-300"
       >
         {t('earn.savePoints')}
-      </Button>
+      </button>
     </div>
   )
 }
@@ -547,15 +652,15 @@ function EducationBanner() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
-      className="w-full mt-4 bg-white border border-zinc-100 rounded-2xl p-4 flex items-start gap-3 shadow-sm"
+      className="w-full mt-4 bg-[#1a1919] rounded-2xl p-4 flex items-start gap-3"
     >
-      <div className="h-8 w-8 bg-amber-50 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
-        <ShieldAlert className="h-4 w-4 text-amber-600" />
+      <div className="h-8 w-8 bg-[#ac8aff]/10 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+        <ShieldAlert className="h-4 w-4 text-[#ac8aff]" />
       </div>
       <div>
-        <p className="text-sm font-medium text-zinc-900 mb-0.5">{t('earn.protectTitle')}</p>
-        <p className="text-xs text-zinc-500 leading-relaxed">{t('earn.eduDesc')}</p>
-        <p className="text-xs text-emerald-600 font-medium mt-1">{t('earn.eduCta')}</p>
+        <p className="text-sm font-medium text-white mb-0.5">{t('earn.protectTitle')}</p>
+        <p className="text-xs text-[#adaaaa] leading-relaxed">{t('earn.eduDesc')}</p>
+        <p className="text-xs text-[#69f6b8] font-medium mt-1">{t('earn.eduCta')}</p>
       </div>
     </motion.div>
   )
@@ -568,8 +673,8 @@ function EducationBanner() {
 export default function EarnPointsPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
       </div>
     }>
       <EarnPointsContent />

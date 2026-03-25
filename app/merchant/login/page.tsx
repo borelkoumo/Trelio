@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Loader2, Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Loader2, Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react'
 import { useLanguage } from '@/components/language-provider'
 
 export default function MerchantLogin() {
@@ -11,8 +11,19 @@ export default function MerchantLogin() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
   const supabase = createClient()
   const { t } = useLanguage()
+
+  // Pre-fill demo credentials when ?demo=1 is present in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('demo') === '1') {
+      setIsDemo(true)
+      setEmail(process.env.NEXT_PUBLIC_DEMO_EMAIL || '')
+      setPassword(process.env.NEXT_PUBLIC_DEMO_PASSWORD || '')
+    }
+  }, [])
 
   // Listen for auth state changes and hard-redirect on session creation.
   // window.location.href (full page reload) is used instead of router.push
@@ -44,7 +55,7 @@ export default function MerchantLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#000000] text-white flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-dvh bg-[#000000] text-white flex items-center justify-center p-4 lg:p-6 relative overflow-hidden">
 
       {/* Background glows */}
       <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-[#69f6b8]/10 rounded-full blur-[120px] pointer-events-none" />
@@ -53,8 +64,8 @@ export default function MerchantLogin() {
       <main className="relative z-10 w-full max-w-[480px] flex flex-col items-center">
 
         {/* Logo + Title */}
-        <header className="w-full text-center mb-10 lg:mb-12">
-          <div className="text-[#69f6b8] font-black tracking-tighter text-4xl mb-6">Trelio</div>
+        <header className="w-full text-center mb-5 lg:mb-12">
+          <div className="text-[#69f6b8] font-black tracking-tighter text-4xl mb-3 lg:mb-6">Trelio</div>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-white mb-3"
             style={{ textShadow: '0 0 20px rgba(105,246,184,0.25)' }}>
             {t('login.title')}
@@ -62,8 +73,20 @@ export default function MerchantLogin() {
           <p className="text-[#adaaaa] text-sm lg:text-base">{t('login.subtitle')}</p>
         </header>
 
+        {/* Demo hint banner */}
+        {isDemo && (
+          <div className="w-full mb-4 px-4 py-3 rounded-2xl flex items-start gap-3"
+            style={{ background: 'rgba(105,246,184,0.08)', border: '1px solid rgba(105,246,184,0.2)' }}>
+            <Sparkles className="w-4 h-4 text-[#69f6b8] mt-0.5 shrink-0" />
+            <p className="text-[#69f6b8] text-sm leading-relaxed">
+              <span className="font-bold">Compte démo prêt.</span>{' '}
+              Les identifiants sont déjà remplis — cliquez simplement sur &quot;Se connecter&quot; pour explorer le tableau de bord marchand.
+            </p>
+          </div>
+        )}
+
         {/* Card */}
-        <div className="w-full p-6 lg:p-8 flex flex-col gap-6"
+        <div className="w-full p-5 lg:p-8 flex flex-col gap-4 lg:gap-6"
           style={{ background: 'rgba(26, 25, 25, 0.6)', backdropFilter: 'blur(40px)', borderRadius: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
 
           {/* ── Social buttons

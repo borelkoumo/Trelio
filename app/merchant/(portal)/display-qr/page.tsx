@@ -5,13 +5,16 @@ import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Check, X, ExternalLink,
-  Menu, ScanLine, RefreshCw, QrCode, BellRing,
+  Menu, ScanLine, RefreshCw, QrCode, BellRing, Fingerprint,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useLanguage } from '@/components/language-provider'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useMerchant } from '@/components/merchant-provider'
+
+/** Must match toShortId() in UserIdBadge.tsx */
+const toShortId = (userId: string) => userId.replace(/-/g, '').substring(0, 6).toUpperCase()
 
 interface ValidationRequest {
   id: string
@@ -219,9 +222,12 @@ export default function DisplayQRPage() {
                             {req.device_type && <p className="text-[#adaaaa] text-xs">{req.device_type}</p>}
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono text-[#777575] py-1 px-2 bg-[#000000] rounded">
-                          {(req.user_email ?? req.user_id).substring(0, 8)}…
-                        </span>
+                        <div className="flex items-center gap-1.5 py-1 px-2 bg-[#000000] rounded-lg border border-[#262626]">
+                          <Fingerprint className="w-3 h-3 text-[#494847]" />
+                          <span className="text-[10px] font-mono font-bold text-[#ac8aff] tracking-wider">
+                            {toShortId(req.user_id)}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex gap-3">
                         <button onClick={() => handleValidation(req.id, 'reject')}
@@ -331,9 +337,10 @@ export default function DisplayQRPage() {
                           </div>
                           <div>
                             <h5 className="text-sm font-bold">{t('merchant.newRequest')}</h5>
-                            <p className="text-[10px] text-[#adaaaa]">
+                            <p className="text-[10px] text-[#adaaaa] flex items-center gap-1.5">
                               {req.device_type && `${req.device_type} • `}
-                              {(req.user_email ?? req.user_id).substring(0, 14)}…
+                              <Fingerprint className="w-3 h-3 text-[#494847] shrink-0" />
+                              <span className="font-mono font-bold text-[#ac8aff]">{toShortId(req.user_id)}</span>
                             </p>
                           </div>
                         </div>

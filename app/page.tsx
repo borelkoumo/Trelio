@@ -156,7 +156,7 @@ export default function Home() {
                       {t('hero.cta1')}
                     </button>
                   </Link>
-                  <Link href="/merchant" className="w-full sm:w-auto">
+                  <Link href="/merchant/login?demo=1" className="w-full sm:w-auto">
                     <button className="w-full px-10 py-5 bg-transparent text-white border border-[#494847]/30 font-bold rounded-full text-lg hover:bg-[#1a1919] transition-all active:scale-95">
                       {t('hero.cta2')}
                     </button>
@@ -414,7 +414,7 @@ export default function Home() {
                     Essayer gratuitement
                   </button>
                 </Link>
-                <Link href="/merchant">
+                <Link href="/merchant/login?demo=1">
                   <button className="px-14 py-6 rounded-full bg-[#1a1919] border border-[#494847] text-white font-bold text-xl hover:bg-[#201f1f] transition-all">
                     Voir la démo
                   </button>
