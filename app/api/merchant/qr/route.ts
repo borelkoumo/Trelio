@@ -23,7 +23,10 @@ export async function GET(request: Request) {
 
     const qrData = generateQRData(merchant.id, merchant.secret_key)
 
-    return NextResponse.json({ qrData })
+    return NextResponse.json(
+      { qrData },
+      { headers: { 'Cache-Control': 'private, max-age=55, stale-while-revalidate=10' } },
+    )
   } catch (error) {
     console.error('QR generation error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

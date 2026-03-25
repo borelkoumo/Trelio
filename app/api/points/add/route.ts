@@ -121,6 +121,7 @@ export async function POST(request: Request) {
         user_id: userId,
         merchant_id: merchant_id,
         device_type: device_type || null,
+        user_email: userEmail,
       })
 
     if (insertError) {

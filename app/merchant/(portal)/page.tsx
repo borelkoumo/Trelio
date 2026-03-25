@@ -3,26 +3,18 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
-  Loader2, QrCode, Search, Calendar, ChevronLeft, ChevronRight,
-  SlidersHorizontal, ChevronDown, Menu,
-  ScanLine, Users, Gift, Sparkles,
+  Loader2, QrCode, ChevronLeft, ChevronRight,
+  Menu, ScanLine, Users, Gift, Sparkles,
 } from 'lucide-react'
 import { useLanguage } from '@/components/language-provider'
-import { MerchantNav } from '@/components/merchant-nav'
+import { useMerchant } from '@/components/merchant-provider'
 
 interface MerchantStats {
   totalScans: number
   uniqueUsers: number
   totalRewards: number
-}
-
-interface MerchantInfo {
-  id: string
-  code: string
-  name: string
 }
 
 interface Scan {
@@ -35,44 +27,19 @@ interface Scan {
   device_type: string | null
 }
 
-
 export default function MerchantDashboard() {
-  const [loading, setLoading]           = useState(true)
-  const [merchant, setMerchant]         = useState<MerchantInfo | null>(null)
-  const [stats, setStats]               = useState<MerchantStats | null>(null)
+  const { name, openDrawer } = useMerchant()
+  const [stats, setStats]               = useState<MerchantStats>({ totalScans: 0, uniqueUsers: 0, totalRewards: 0 })
   const [scans, setScans]               = useState<Scan[]>([])
   const [totalScans, setTotalScans]     = useState(0)
   const [page, setPage]                 = useState(1)
   const [limit]                         = useState(5)
   const [search, setSearch]             = useState('')
   const [dateFilter, setDateFilter]     = useState('')
-  const [loadingTable, setLoadingTable] = useState(false)
-  const [showFilters, setShowFilters]   = useState(false)
-  const [drawerOpen, setDrawerOpen]     = useState(false)
+  const [loadingTable, setLoadingTable] = useState(true)
 
-  const router   = useRouter()
-  const supabase = createClient()
-  const { t }    = useLanguage()
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/merchant/login')
-  }
-
-  const fetchDashboardData = useCallback(async () => {
-    try {
-      const res = await fetch('/api/merchant/stats')
-      if (res.status === 401) { router.push('/merchant/login'); return }
-      const data = await res.json()
-      if (res.ok) {
-        setMerchant(data.merchant)
-      } else {
-        toast.error(t('merchant.failedLoad'), { description: data.error })
-      }
-    } catch {
-      toast.error(t('merchant.failedLoad'))
-    }
-  }, [router, t])
+  const router = useRouter()
+  const { t }  = useLanguage()
 
   const fetchScans = useCallback(async () => {
     setLoadingTable(true)
@@ -89,21 +56,18 @@ export default function MerchantDashboard() {
         setTotalScans(data.total)
         setStats(prev => ({
           ...prev,
-          totalScans:   data.stats.totalScans,
-          uniqueUsers:  data.stats.uniqueUsers,
-          totalRewards: prev?.totalRewards || 0,
+          totalScans:  data.stats.totalScans,
+          uniqueUsers: data.stats.uniqueUsers,
         }))
       }
     } catch (err) {
       console.error('Failed to fetch scans', err)
     } finally {
       setLoadingTable(false)
-      setLoading(false)
     }
   }, [page, limit, search, dateFilter])
 
-  useEffect(() => { fetchDashboardData() }, [fetchDashboardData])
-  useEffect(() => { fetchScans() },          [fetchScans])
+  useEffect(() => { fetchScans() }, [fetchScans])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -113,59 +77,30 @@ export default function MerchantDashboard() {
 
   const totalPages = Math.ceil(totalScans / limit)
 
-  // ── Loading / error states ─────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#69f6b8]" />
-      </div>
-    )
-  }
-
-  if (!merchant || !stats) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0e0e0e]">
-        <p className="text-[#adaaaa]">{t('merchant.failedData')}</p>
-      </div>
-    )
-  }
-
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0e0e0e] text-white font-sans">
-
-      <MerchantNav
-        merchantName={merchant.name}
-        merchantCode={merchant.code}
-        activePath="/merchant"
-        onLogout={handleLogout}
-        drawerOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
-
+    <>
       {/* ── Mobile top header ─────────────────────────────────────────── */}
       <header className="lg:hidden fixed top-0 w-full z-50 h-16 flex items-center justify-between px-6 shadow-[0_48px_48px_rgba(172,138,255,0.04)]"
         style={{ background: 'rgba(14,14,14,0.8)', backdropFilter: 'blur(20px)' }}>
         <div className="flex items-center gap-4">
-          <button onClick={() => setDrawerOpen(true)} className="text-[#adaaaa] hover:bg-[#262626] p-2 rounded-full transition-colors active:scale-95">
+          <button onClick={openDrawer} className="text-[#adaaaa] hover:bg-[#262626] p-2 rounded-full transition-colors active:scale-95">
             <Menu className="w-5 h-5" />
           </button>
           <span className="font-bold text-lg text-[#69f6b8] tracking-tight">Dashboard</span>
         </div>
         <div className="w-10 h-10 rounded-full bg-[#262626] border border-[#494847]/15 flex items-center justify-center text-[#69f6b8] font-black text-sm">
-          {merchant.name.charAt(0).toUpperCase()}
+          {name.charAt(0).toUpperCase()}
         </div>
       </header>
 
-
       {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="lg:ml-64 pt-20 lg:pt-8 pb-12 px-6 lg:px-12 space-y-10 lg:space-y-12">
+      <main className="pt-20 lg:pt-8 pb-12 px-6 lg:px-12 space-y-10 lg:space-y-12">
 
         {/* Welcome */}
         <section className="space-y-1 pt-4">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#adaaaa]">{t('merchant.welcome').replace(',', '').trim()}</p>
           <h1 className="font-black tracking-tight leading-none text-[#69f6b8] text-2xl lg:text-[3.5rem]">
-            {merchant.name}
+            {name}
           </h1>
           <p className="text-[#adaaaa]/70 text-base mt-2 lg:hidden">{t('merchant.manage')}</p>
         </section>
@@ -224,18 +159,14 @@ export default function MerchantDashboard() {
           {/* 3 stat cards */}
           <div className="col-span-8 grid grid-cols-3 gap-6 h-[180px]">
             <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
-              <div className="flex justify-between items-start">
-                <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.totalScans')}</span>
-              </div>
+              <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.totalScans')}</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-5xl font-black tracking-tighter">{stats.totalScans}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#69f6b8] mb-2" />
               </div>
             </div>
             <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
-              <div className="flex justify-between items-start">
-                <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.uniqueUsers')}</span>
-              </div>
+              <span className="text-[#adaaaa] text-xs font-bold tracking-wider uppercase">{t('merchant.uniqueUsers')}</span>
               <span className="text-5xl font-black tracking-tighter">{stats.uniqueUsers}</span>
             </div>
             <div className="bg-[#1a1919] rounded-3xl p-6 flex flex-col justify-between hover:bg-[#201f1f] transition-colors">
@@ -372,6 +303,6 @@ export default function MerchantDashboard() {
         </div>
 
       </main>
-    </div>
+    </>
   )
 }

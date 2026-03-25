@@ -20,6 +20,7 @@ create table public.points (
   user_id text not null,                                    -- UUID string (anonymous or authenticated)
   merchant_id uuid references public.merchants(id) not null,
   device_type text,                                         -- e.g. 'iPhone (Safari)', 'Windows (Chrome)'
+  user_email text,                                          -- email if user was authenticated at scan time
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -77,6 +78,37 @@ create policy "Validation requests are updatable" on public.validation_requests 
 
 -- Enable realtime for validation_requests
 alter publication supabase_realtime add table public.validation_requests;
+
+-- ===================================================================
+-- PERFORMANCE INDEXES
+-- ===================================================================
+create index if not exists idx_points_merchant_created
+  on public.points (merchant_id, created_at desc);
+
+create index if not exists idx_points_user_id
+  on public.points (user_id);
+
+create index if not exists idx_rewards_merchant_id
+  on public.rewards (merchant_id);
+
+create index if not exists idx_validation_requests_merchant_status
+  on public.validation_requests (merchant_id, status);
+
+create index if not exists idx_merchants_user_id
+  on public.merchants (user_id);
+
+-- ===================================================================
+-- RPC FUNCTION: count distinct users per merchant
+-- ===================================================================
+create or replace function count_distinct_users(p_merchant_id uuid)
+returns bigint
+language sql
+stable
+as $$
+  select count(distinct user_id)
+  from public.points
+  where merchant_id = p_merchant_id;
+$$;
 
 -- ===================================================================
 -- DEFAULT / SEED MERCHANT
