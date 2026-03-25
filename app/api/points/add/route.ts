@@ -22,12 +22,33 @@ export async function POST(request: Request) {
     // Use regular server client (reads session cookies) to identify the user
     const serverClient = await createClient()
     const { data: { user } } = await serverClient.auth.getUser()
-    // Prefer fideloAnonId (anonymous customer); don't leak merchant email in demo mode
-    const userId = fideloAnonId || user?.id
-    const userEmail = fideloAnonId ? null : user?.email ?? null
 
-    if (!userId) {
-      return NextResponse.json({ error: 'User identification missing' }, { status: 401 })
+    // Identify the customer: prefer existing anon cookie, then Supabase session,
+    // then generate a new anon ID so any scanning customer is always identified.
+    let newAnonId: string | null = null
+    let userId: string
+    if (fideloAnonId) {
+      userId = fideloAnonId
+    } else if (user?.id) {
+      userId = user.id
+    } else {
+      newAnonId = crypto.randomUUID()
+      userId = newAnonId
+    }
+    const userEmail = user?.email ?? null
+
+    // Helper: attach the new anon cookie to any response branch
+    const withAnonCookie = (res: NextResponse): NextResponse => {
+      if (newAnonId) {
+        res.cookies.set('fidelo_anon_id', newAnonId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 365, // 1 year
+          path: '/',
+        })
+      }
+      return res
     }
 
     // Fetch merchant
@@ -38,14 +59,14 @@ export async function POST(request: Request) {
       .single()
 
     if (merchantError || !merchant) {
-      return NextResponse.json({ error: 'Merchant not found' }, { status: 404 })
+      return withAnonCookie(NextResponse.json({ error: 'Merchant not found' }, { status: 404 }))
     }
 
     // Re-validate QR code
     const { validateQRData } = await import('@/lib/qr')
     const validation = validateQRData(qr_data, merchant.secret_key)
     if (!validation.valid || validation.merchantId !== merchant_id) {
-      return NextResponse.json({ error: 'Invalid or expired QR code' }, { status: 400 })
+      return withAnonCookie(NextResponse.json({ error: 'Invalid or expired QR code' }, { status: 400 }))
     }
 
     // Check cooldown (e.g., 10 minutes)
@@ -60,11 +81,11 @@ export async function POST(request: Request) {
 
     if (pointsError) {
       console.error('Points error:', pointsError)
-      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+      return withAnonCookie(NextResponse.json({ error: 'Database error' }, { status: 500 }))
     }
 
     if (recentPoints && recentPoints.length > 0) {
-      return NextResponse.json({ error: 'Cooldown active. Please wait before scanning again.' }, { status: 429 })
+      return withAnonCookie(NextResponse.json({ error: 'Cooldown active. Please wait before scanning again.' }, { status: 429 }))
     }
 
     if (merchant.validation_mode === 'manual') {
@@ -83,14 +104,14 @@ export async function POST(request: Request) {
 
       if (requestError) {
         console.error('Validation request insert error:', requestError)
-        return NextResponse.json({ error: 'Failed to request validation' }, { status: 500 })
+        return withAnonCookie(NextResponse.json({ error: 'Failed to request validation' }, { status: 500 }))
       }
 
-      return NextResponse.json({
+      return withAnonCookie(NextResponse.json({
         success: true,
         status: 'pending_validation',
         requestId: requestData.id,
-      })
+      }))
     }
 
     // Add point (Automatic mode)
@@ -104,7 +125,7 @@ export async function POST(request: Request) {
 
     if (insertError) {
       console.error('Insert error:', insertError)
-      return NextResponse.json({ error: 'Failed to add point' }, { status: 500 })
+      return withAnonCookie(NextResponse.json({ error: 'Failed to add point' }, { status: 500 }))
     }
 
     // Check if reward threshold is reached
@@ -125,18 +146,18 @@ export async function POST(request: Request) {
 
     // Calculate effective points towards next reward
     const effectivePoints = pointsCount - (rewardsCount * merchant.reward_threshold)
-    
+
     let rewardUnlocked = false
     if (effectivePoints >= merchant.reward_threshold) {
       rewardUnlocked = true
     }
 
-    return NextResponse.json({
+    return withAnonCookie(NextResponse.json({
       success: true,
       points: effectivePoints,
       threshold: merchant.reward_threshold,
       rewardUnlocked,
-    })
+    }))
   } catch (error) {
     console.error('Add point error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
