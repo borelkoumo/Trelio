@@ -5,3 +5,5 @@ coverage/
 *.log
 .env*
 !.env.example
+# next-agents-md
+.next-docs/
